@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Runway — Cash Flow</title>
+<title>Runway</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -11,7 +11,6 @@
   --blue: #1A5FA8;
   --blue-light: #3B82F6;
   --teal: #0F9D8A;
-  --teal-light: #E0F7F4;
   --red: #DC2626;
   --red-light: #FEE2E2;
   --amber: #D97706;
@@ -21,8 +20,10 @@
   --gray-50: #F8FAFC;
   --gray-100: #F1F5F9;
   --gray-200: #E2E8F0;
+  --gray-300: #CBD5E1;
   --gray-400: #94A3B8;
   --gray-600: #475569;
+  --gray-700: #334155;
   --gray-800: #1E293B;
   --card: #FFFFFF;
   --bg: #F0F4F8;
@@ -30,22 +31,19 @@
   --radius-sm: 8px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gray-800); min-height: 100vh; padding-bottom: 80px; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gray-800); min-height: 100vh; padding-bottom: 84px; }
 
 /* Header */
-.header {
-  background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
-  padding: 52px 20px 24px;
-  position: relative; overflow: hidden;
-}
+.header { background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%); padding: 52px 20px 20px; position: relative; overflow: hidden; }
 .header-orb1 { position:absolute; top:-40px; right:-40px; width:160px; height:160px; border-radius:50%; background:rgba(255,255,255,0.05); }
 .header-orb2 { position:absolute; bottom:-30px; left:20px; width:100px; height:100px; border-radius:50%; background:rgba(255,255,255,0.04); }
 .header-label { font-size:11px; font-weight:600; color:rgba(255,255,255,0.55); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:4px; position:relative; z-index:1; }
 .header-balance { font-size:38px; font-weight:700; color:#fff; position:relative; z-index:1; letter-spacing:-0.5px; }
-.header-sub { font-size:13px; color:rgba(255,255,255,0.6); margin-top:4px; position:relative; z-index:1; }
-.header-edit-btn { position:absolute; top:52px; right:20px; z-index:2; background:rgba(255,255,255,0.12); border:none; border-radius:var(--radius-sm); padding:6px 12px; color:#fff; font-size:13px; font-family:'Inter',sans-serif; cursor:pointer; }
+.header-row { display:flex; justify-content:space-between; align-items:flex-end; position:relative; z-index:1; margin-top:4px; }
+.header-sub { font-size:13px; color:rgba(255,255,255,0.6); }
+.header-as-of { font-size:11px; color:rgba(255,255,255,0.45); }
 
-/* Metric chips */
+/* Chips */
 .chips { display:flex; gap:10px; padding:14px 16px; overflow-x:auto; scrollbar-width:none; }
 .chips::-webkit-scrollbar { display:none; }
 .chip { flex-shrink:0; background:var(--card); border-radius:var(--radius); padding:12px 14px; min-width:130px; box-shadow:0 1px 4px rgba(0,0,0,0.07); }
@@ -55,7 +53,7 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
 .chip-value.warn { color:var(--amber); }
 .chip-value.good { color:var(--green); }
 
-/* Nav tabs */
+/* Nav */
 .nav { display:flex; background:var(--card); border-top:1px solid var(--gray-200); position:fixed; bottom:0; left:0; right:0; z-index:100; padding-bottom:env(safe-area-inset-bottom); }
 .nav-tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px 4px 8px; gap:3px; cursor:pointer; border:none; background:none; color:var(--gray-400); font-family:'Inter',sans-serif; }
 .nav-tab.active { color:var(--blue); }
@@ -63,21 +61,72 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
 .nav-tab span { font-size:10px; font-weight:600; letter-spacing:0.03em; }
 
 /* Sections */
-.section { display:none; animation:fadeIn 0.18s ease; }
-.section.active { display:block; }
+.section { display:none; }
+.section.active { display:block; animation:fadeIn 0.18s ease; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
 
 /* Chart */
 .chart-card { margin:0 16px 16px; background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); }
-.chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
 .chart-title { font-size:13px; font-weight:600; color:var(--gray-600); }
+.chart-legend { display:flex; gap:12px; margin-bottom:12px; }
+.legend-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--gray-400); }
+.legend-dot { width:24px; height:2px; border-radius:1px; }
+.legend-dot.confirmed { background:#1A5FA8; }
+.legend-dot.projected { background:#94A3B8; border-top:2px dashed #94A3B8; height:0; }
 .horizon-btns { display:flex; gap:4px; }
 .horizon-btn { padding:4px 10px; font-size:11px; font-weight:600; border:1px solid var(--gray-200); border-radius:20px; background:none; color:var(--gray-400); cursor:pointer; font-family:'Inter',sans-serif; }
 .horizon-btn.active { background:var(--blue); color:#fff; border-color:var(--blue); }
-.chart-wrap { position:relative; width:100%; height:200px; }
+.chart-wrap { position:relative; width:100%; height:210px; }
 
-/* Trough list */
+/* Section headings */
 .section-heading { font-size:12px; font-weight:600; color:var(--gray-400); text-transform:uppercase; letter-spacing:0.07em; padding:0 16px; margin:16px 0 8px; }
+
+/* Transaction cards */
+.tx-card { display:flex; align-items:center; gap:12px; margin:0 16px 8px; padding:13px 14px; background:var(--card); border-radius:var(--radius-sm); box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+.tx-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.tx-dot.credit { background:var(--green); }
+.tx-dot.debit { background:var(--red); }
+.tx-info { flex:1; min-width:0; }
+.tx-name { font-size:14px; font-weight:500; color:var(--gray-800); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tx-date { font-size:12px; color:var(--gray-400); margin-top:1px; }
+.tx-amount { font-size:15px; font-weight:700; flex-shrink:0; }
+.tx-amount.credit { color:var(--green); }
+.tx-amount.debit { color:var(--gray-800); }
+.tx-delete { width:28px; height:28px; border-radius:6px; border:none; background:var(--gray-100); color:var(--gray-400); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+.tx-delete svg { width:13px; height:13px; stroke-width:2; }
+
+/* Recurring item cards */
+.item-card { background:var(--card); border-radius:var(--radius); padding:14px 16px; margin:0 16px 10px; box-shadow:0 1px 4px rgba(0,0,0,0.07); }
+.item-card-top { display:flex; align-items:center; gap:12px; }
+.item-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.item-icon.credit { background:var(--green-light); color:var(--green); }
+.item-icon.debit { background:var(--red-light); color:var(--red); }
+.item-icon svg { width:18px; height:18px; stroke-width:2; }
+.item-info { flex:1; min-width:0; }
+.item-name { font-size:14px; font-weight:600; color:var(--gray-800); }
+.item-meta { font-size:12px; color:var(--gray-400); margin-top:2px; }
+.item-right { text-align:right; flex-shrink:0; }
+.item-amt { font-size:15px; font-weight:700; }
+.item-amt.credit { color:var(--green); }
+.item-amt.debit { color:var(--gray-800); }
+.item-variance { font-size:11px; color:var(--gray-400); margin-top:1px; }
+.item-actions { display:flex; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid var(--gray-100); }
+.item-btn { flex:1; padding:7px; font-size:12px; font-weight:600; border-radius:var(--radius-sm); border:1px solid var(--gray-200); background:none; color:var(--gray-600); font-family:'Inter',sans-serif; cursor:pointer; text-align:center; }
+.item-btn.confirm { border-color:var(--blue); color:var(--blue); }
+.item-btn.confirmed-badge { border-color:var(--green); color:var(--green); background:var(--green-light); }
+.item-btn.danger { border-color:var(--red); color:var(--red); }
+
+/* Confirmed instances */
+.confirmed-list { margin:0 16px; }
+.confirmed-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--gray-100); font-size:13px; }
+.confirmed-row:last-child { border-bottom:none; }
+.confirmed-month { color:var(--gray-600); }
+.confirmed-right { display:flex; align-items:center; gap:8px; }
+.confirmed-amt { font-weight:600; color:var(--gray-800); }
+.confirmed-clear { font-size:11px; color:var(--gray-400); cursor:pointer; padding:2px 6px; }
+
+/* Trough */
 .trough-item { display:flex; justify-content:space-between; align-items:center; margin:0 16px 8px; padding:12px 14px; background:var(--card); border-radius:var(--radius-sm); border-left:3px solid var(--gray-200); box-shadow:0 1px 3px rgba(0,0,0,0.05); }
 .trough-item.danger { border-left-color:var(--red); background:var(--red-light); }
 .trough-item.warn { border-left-color:var(--amber); background:var(--amber-light); }
@@ -88,49 +137,31 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
 .trough-item.warn .trough-val { color:var(--amber); }
 .trough-item.good .trough-val { color:var(--green); }
 
-/* Items list */
-.items-list { padding:0 16px; }
-.item-card { background:var(--card); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px; box-shadow:0 1px 4px rgba(0,0,0,0.07); display:flex; align-items:center; gap:12px; }
-.item-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.item-icon.credit { background:var(--green-light); color:var(--green); }
-.item-icon.debit { background:var(--red-light); color:var(--red); }
-.item-icon svg { width:18px; height:18px; stroke-width:2; }
-.item-info { flex:1; min-width:0; }
-.item-name { font-size:14px; font-weight:600; color:var(--gray-800); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.item-meta { font-size:12px; color:var(--gray-400); margin-top:2px; }
-.item-amount { text-align:right; flex-shrink:0; }
-.item-amt-val { font-size:15px; font-weight:700; }
-.item-amt-val.credit { color:var(--green); }
-.item-amt-val.debit { color:var(--gray-800); }
-.item-variance { font-size:11px; color:var(--gray-400); margin-top:1px; }
-.item-delete { width:30px; height:30px; border-radius:8px; border:none; background:var(--gray-100); color:var(--gray-400); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
-.item-delete:active { background:var(--red-light); color:var(--red); }
-.item-delete svg { width:14px; height:14px; stroke-width:2; }
-
 /* FAB */
-.fab { position:fixed; bottom:80px; right:20px; width:52px; height:52px; border-radius:50%; background:var(--blue); color:#fff; border:none; box-shadow:0 4px 16px rgba(26,95,168,0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:99; }
+.fab { position:fixed; bottom:88px; right:20px; width:52px; height:52px; border-radius:50%; background:var(--blue); color:#fff; border:none; box-shadow:0 4px 16px rgba(26,95,168,0.4); display:none; align-items:center; justify-content:center; cursor:pointer; z-index:99; }
 .fab svg { width:24px; height:24px; stroke-width:2.2; }
 .fab:active { transform:scale(0.94); }
 
-/* Bottom sheet / modal */
+/* Overlay + Sheet */
 .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:200; opacity:0; pointer-events:none; transition:opacity 0.22s; }
 .overlay.open { opacity:1; pointer-events:all; }
 .sheet { position:fixed; bottom:0; left:0; right:0; background:#fff; border-radius:22px 22px 0 0; z-index:201; padding:0 0 env(safe-area-inset-bottom); transform:translateY(100%); transition:transform 0.28s cubic-bezier(0.32,0.72,0,1); max-height:92vh; overflow-y:auto; }
 .sheet.open { transform:translateY(0); }
 .sheet-handle { width:36px; height:4px; background:var(--gray-200); border-radius:2px; margin:12px auto 0; }
 .sheet-title { font-size:17px; font-weight:700; color:var(--gray-800); padding:16px 20px 0; }
-.sheet-body { padding:16px 20px 24px; }
+.sheet-body { padding:16px 20px 28px; }
 .form-group { margin-bottom:14px; }
 .form-label { font-size:12px; font-weight:600; color:var(--gray-600); margin-bottom:5px; display:block; letter-spacing:0.03em; }
 .form-input { width:100%; padding:11px 14px; border:1.5px solid var(--gray-200); border-radius:var(--radius-sm); font-size:15px; font-family:'Inter',sans-serif; color:var(--gray-800); background:#fff; outline:none; }
 .form-input:focus { border-color:var(--blue-light); }
 .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 .type-btns { display:flex; gap:8px; }
-.type-btn { flex:1; padding:10px; border:1.5px solid var(--gray-200); border-radius:var(--radius-sm); background:none; font-size:14px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; }
+.type-btn { flex:1; padding:10px; border:1.5px solid var(--gray-200); border-radius:var(--radius-sm); background:none; font-size:14px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; color:var(--gray-600); }
 .type-btn.active.debit { border-color:var(--red); background:var(--red-light); color:var(--red); }
 .type-btn.active.credit { border-color:var(--green); background:var(--green-light); color:var(--green); }
 .btn-save { width:100%; padding:14px; background:var(--blue); color:#fff; border:none; border-radius:var(--radius); font-size:16px; font-weight:700; font-family:'Inter',sans-serif; cursor:pointer; margin-top:6px; }
 .btn-save:active { opacity:0.88; }
+.btn-danger-full { width:100%; padding:12px; background:none; color:var(--red); border:1.5px solid var(--red); border-radius:var(--radius); font-size:14px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; margin-top:8px; }
 
 /* Settings */
 .settings-section { margin:0 16px 20px; }
@@ -139,11 +170,11 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
 .setting-row:last-child { border-bottom:none; }
 .setting-label { flex:1; font-size:14px; color:var(--gray-800); }
 .setting-label small { display:block; font-size:12px; color:var(--gray-400); margin-top:1px; }
-.setting-input { width:120px; text-align:right; padding:6px 10px; border:1.5px solid var(--gray-200); border-radius:var(--radius-sm); font-size:14px; font-weight:600; font-family:'Inter',sans-serif; color:var(--gray-800); }
+.setting-input { width:130px; text-align:right; padding:6px 10px; border:1.5px solid var(--gray-200); border-radius:var(--radius-sm); font-size:14px; font-weight:600; font-family:'Inter',sans-serif; color:var(--gray-800); }
 .setting-input:focus { border-color:var(--blue-light); outline:none; }
 .setting-select { padding:6px 10px; border:1.5px solid var(--gray-200); border-radius:var(--radius-sm); font-size:14px; font-family:'Inter',sans-serif; color:var(--gray-800); background:#fff; }
 
-/* Save status */
+/* Save banner */
 .save-banner { position:fixed; top:0; left:0; right:0; z-index:300; padding:10px 16px; font-size:13px; font-weight:600; text-align:center; transform:translateY(-100%); transition:transform 0.25s; }
 .save-banner.show { transform:translateY(0); }
 .save-banner.saving { background:var(--amber-light); color:var(--amber); }
@@ -151,46 +182,52 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
 .save-banner.error { background:var(--red-light); color:var(--red); }
 
 .empty-state { text-align:center; padding:3rem 2rem; color:var(--gray-400); font-size:14px; }
+.pb { height:70px; }
+.tag-confirmed { display:inline-block; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; background:var(--green-light); color:var(--green); margin-left:6px; vertical-align:middle; letter-spacing:0.03em; }
+.tag-projected { display:inline-block; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; background:var(--gray-100); color:var(--gray-400); margin-left:6px; vertical-align:middle; letter-spacing:0.03em; }
 </style>
 </head>
 <body>
 
 <div class="save-banner" id="saveBanner"></div>
 
-<!-- Header -->
 <div class="header">
   <div class="header-orb1"></div>
   <div class="header-orb2"></div>
   <div class="header-label">Checking balance</div>
-  <div class="header-balance" id="headerBalance">$0</div>
-  <div class="header-sub" id="headerSub">Loading…</div>
-  <button class="header-edit-btn" onclick="openSettings()">Settings</button>
+  <div class="header-balance" id="headerBalance">$—</div>
+  <div class="header-row">
+    <div class="header-sub" id="headerSub">Loading…</div>
+    <div class="header-as-of" id="headerAsOf"></div>
+  </div>
 </div>
 
-<!-- Metric chips -->
 <div class="chips" id="metricChips"></div>
 
-<!-- Nav -->
 <nav class="nav">
-  <button class="nav-tab active" onclick="switchTab('chart',this)" id="navChart">
+  <button class="nav-tab active" onclick="switchTab('chart',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     <span>Runway</span>
   </button>
-  <button class="nav-tab" onclick="switchTab('troughs',this)" id="navTroughs">
+  <button class="nav-tab" onclick="switchTab('transactions',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+    <span>Actuals</span>
+  </button>
+  <button class="nav-tab" onclick="switchTab('recurring',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+    <span>Recurring</span>
+  </button>
+  <button class="nav-tab" onclick="switchTab('lowpoints',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
     <span>Low Points</span>
   </button>
-  <button class="nav-tab" onclick="switchTab('items',this)" id="navItems">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-    <span>Items</span>
-  </button>
-  <button class="nav-tab" onclick="switchTab('settings',this)" id="navSettings">
+  <button class="nav-tab" onclick="switchTab('settings',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
     <span>Settings</span>
   </button>
 </nav>
 
-<!-- Chart section -->
+<!-- Runway -->
 <div class="section active" id="section-chart">
   <div class="chart-card">
     <div class="chart-header">
@@ -201,37 +238,48 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
         <button class="horizon-btn" onclick="setHorizon(365,this)">1yr</button>
       </div>
     </div>
+    <div class="chart-legend">
+      <div class="legend-item"><div class="legend-dot confirmed"></div> Confirmed</div>
+      <div class="legend-item"><div class="legend-dot projected"></div> Projected</div>
+    </div>
     <div class="chart-wrap">
       <canvas id="runwayChart" role="img" aria-label="Projected checking account balance over time"></canvas>
     </div>
   </div>
 </div>
 
-<!-- Troughs section -->
-<div class="section" id="section-troughs">
+<!-- Actuals / Transactions -->
+<div class="section" id="section-transactions">
+  <div class="section-heading">Manual transactions</div>
+  <div id="txList"></div>
+  <div class="pb"></div>
+</div>
+
+<!-- Recurring -->
+<div class="section" id="section-recurring">
+  <div class="section-heading">Recurring items</div>
+  <div id="recurringList"></div>
+  <div class="pb"></div>
+</div>
+
+<!-- Low Points -->
+<div class="section" id="section-lowpoints">
   <div class="section-heading">Monthly low points</div>
   <div id="troughContainer"></div>
 </div>
 
-<!-- Items section -->
-<div class="section" id="section-items">
-  <div class="section-heading">Recurring items</div>
-  <div class="items-list" id="itemsList"></div>
-  <div style="height:70px"></div>
-</div>
-
-<!-- Settings section -->
+<!-- Settings -->
 <div class="section" id="section-settings">
   <div class="section-heading">Account</div>
   <div class="settings-section">
     <div class="settings-card">
       <div class="setting-row">
-        <div class="setting-label">Current balance<small>Your checking balance right now</small></div>
-        <input class="setting-input" type="number" id="settingBalance" value="8621" onchange="onSettingChange()">
+        <div class="setting-label">Starting balance<small>Your balance before any actuals entered here</small></div>
+        <input class="setting-input" type="number" id="settingBalance" value="0" step="0.01" onchange="onSettingChange()">
       </div>
       <div class="setting-row">
-        <div class="setting-label">Danger threshold<small>Alert when balance falls below</small></div>
-        <input class="setting-input" type="number" id="settingThreshold" value="1000" onchange="onSettingChange()">
+        <div class="setting-label">Danger threshold<small>Alert when projected balance falls below</small></div>
+        <input class="setting-input" type="number" id="settingThreshold" value="1000" step="100" onchange="onSettingChange()">
       </div>
     </div>
   </div>
@@ -252,75 +300,38 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
   <div class="settings-section">
     <div class="settings-card">
       <div class="setting-row">
-        <div class="setting-label">Google Sheets sync<small>All data saves to your Sheet automatically</small></div>
-        <span style="font-size:12px;font-weight:600;color:var(--green)" id="syncStatus">●&nbsp;Connected</span>
+        <div class="setting-label">Google Sheets sync<small>Data saves to your Sheet automatically</small></div>
+        <span style="font-size:12px;font-weight:600;color:var(--green)" id="syncStatus">● Connected</span>
       </div>
     </div>
   </div>
 </div>
 
-<!-- FAB (only on items tab) -->
-<button class="fab" id="fab" onclick="openAddSheet()" style="display:none" aria-label="Add item">
+<button class="fab" id="fab" aria-label="Add">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
-<!-- Bottom sheet overlay -->
+<!-- Sheet overlay -->
 <div class="overlay" id="overlay" onclick="closeSheet()"></div>
 <div class="sheet" id="sheet">
   <div class="sheet-handle"></div>
-  <div class="sheet-title" id="sheetTitle">Add item</div>
-  <div class="sheet-body">
-    <input type="hidden" id="editId">
-    <div class="form-group">
-      <label class="form-label">Description</label>
-      <input class="form-input" type="text" id="fieldName" placeholder="e.g. Mortgage">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Type</label>
-      <div class="type-btns">
-        <button class="type-btn active debit" onclick="setType('debit')" id="btnDebit">Debit (out)</button>
-        <button class="type-btn credit" onclick="setType('credit')" id="btnCredit">Credit (in)</button>
-      </div>
-      <input type="hidden" id="fieldType" value="debit">
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Amount ($)</label>
-        <input class="form-input" type="number" id="fieldAmount" placeholder="0" step="1" min="0">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Variance ± ($)</label>
-        <input class="form-input" type="number" id="fieldVariance" placeholder="0" step="50" min="0">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Frequency</label>
-        <select class="form-input" id="fieldFreq" onchange="updateDayLabel()">
-          <option value="monthly">Monthly</option>
-          <option value="biweekly">Bi-weekly</option>
-          <option value="weekly">Weekly</option>
-          <option value="once">One-time</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label" id="dayLabel">Day of month</label>
-        <input class="form-input" type="number" id="fieldDay" placeholder="1" min="0" max="31" step="1">
-      </div>
-    </div>
-    <button class="btn-save" onclick="saveItem()">Save item</button>
-  </div>
+  <div class="sheet-title" id="sheetTitle">Add</div>
+  <div class="sheet-body" id="sheetBody"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 const WEB_APP = 'https://script.google.com/macros/s/AKfycbwBMDS5WRCnv1nQSIywLGPa8EeMmewbbDiZ0eKGS7FR48wQ0bPrOiVCUgzB-VA1o5wA/exec';
-let items = [];
-let nextId = 100;
+
+let items = [];       // recurring items
+let transactions = []; // manual one-off actuals
+let confirmedAmounts = {}; // key: "itemId_YYYY-MM" => amount
+let nextItemId = 100;
+let nextTxId = 1000;
 let chart = null;
 let saveTimer = null;
 let horizon = 180;
-let currentSection = 'chart';
+let currentTab = 'chart';
 
 const DEFAULT_ITEMS = [
   { id:1, name:'Paycheck', type:'credit', amount:4801.76, freq:'biweekly', day:5, variance:0 },
@@ -336,366 +347,522 @@ const DEFAULT_ITEMS = [
   { id:11, name:'Spotify', type:'debit', amount:11, freq:'monthly', day:15, variance:0 },
 ];
 
+// ── Formatting ──────────────────────────────────────────────
 function fmtFull(v) {
-  const abs = Math.abs(Math.round(v));
-  return (v < 0 ? '-$' : '$') + abs.toLocaleString();
+  const neg = v < 0;
+  const abs = Math.abs(v);
+  const s = abs.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  return (neg ? '-$' : '$') + s;
 }
-function fmtDate(d) {
-  return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
-}
-function fmtDateLong(d) {
-  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-}
+function fmtDate(d) { return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+function fmtDateLong(d) { return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function fmtMonthKey(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function freqLabel(item) {
-  const f = { monthly:'Monthly', biweekly:'Bi-weekly', weekly:'Weekly', once:'One-time' };
-  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  if (item.freq === 'monthly') return 'Monthly · day ' + item.day;
-  if (item.freq === 'biweekly') return 'Bi-weekly · ' + (dayNames[item.day % 7] || 'day ' + item.day);
-  if (item.freq === 'weekly') return 'Weekly · ' + (dayNames[item.day % 7] || 'every week');
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  if (item.freq==='monthly') return 'Monthly · day '+item.day;
+  if (item.freq==='biweekly') return 'Bi-weekly · '+days[item.day%7];
+  if (item.freq==='weekly') return 'Weekly · '+days[item.day%7];
   return 'One-time';
 }
 
+// ── API ─────────────────────────────────────────────────────
 async function apiGet(params) {
-  const url = WEB_APP + '?' + new URLSearchParams(params);
-  const r = await fetch(url);
+  const r = await fetch(WEB_APP+'?'+new URLSearchParams(params));
   return r.json();
 }
 async function apiPost(body) {
-  const r = await fetch(WEB_APP, { method:'POST', body:JSON.stringify(body) });
+  const r = await fetch(WEB_APP,{method:'POST',body:JSON.stringify(body)});
   return r.json();
 }
 
+// ── Load ────────────────────────────────────────────────────
 async function loadFromSheet() {
   try {
-    const res = await apiGet({ action:'getAll' });
+    const res = await apiGet({action:'getAll'});
     if (!res.ok) throw new Error(res.error);
-    const { items: si, settings } = res.data;
-    if (si && si.length > 0) {
-      items = si;
-      nextId = Math.max(...items.map(i => parseInt(i.id)||0)) + 1;
-    } else {
-      items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
-      nextId = 20;
-    }
+    const { items:si, settings, transactions:st, confirmedAmounts:sc } = res.data;
+    items = (si && si.length>0) ? si : JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+    transactions = st || [];
+    confirmedAmounts = sc || {};
+    nextItemId = items.length>0 ? Math.max(...items.map(i=>parseInt(i.id)||0))+1 : 100;
+    nextTxId = transactions.length>0 ? Math.max(...transactions.map(t=>parseInt(t.id)||0))+1 : 1000;
     if (settings) {
       if (settings.balance) document.getElementById('settingBalance').value = settings.balance;
       if (settings.threshold) document.getElementById('settingThreshold').value = settings.threshold;
-      if (settings.horizon) {
-        horizon = parseInt(settings.horizon);
-        document.getElementById('settingHorizon').value = settings.horizon;
-        document.querySelectorAll('.horizon-btn').forEach(b => {
-          b.classList.toggle('active', parseInt(b.textContent) === horizon || b.textContent === (horizon===365?'1yr':horizon===180?'6mo':'90d'));
-        });
-      }
+      if (settings.horizon) { horizon=parseInt(settings.horizon); document.getElementById('settingHorizon').value=settings.horizon; }
     }
-    document.getElementById('syncStatus').innerHTML = '●&nbsp;Connected';
-    document.getElementById('syncStatus').style.color = 'var(--green)';
+    document.getElementById('syncStatus').innerHTML='● Connected';
+    document.getElementById('syncStatus').style.color='var(--green)';
   } catch(e) {
     items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
-    nextId = 20;
-    document.getElementById('syncStatus').innerHTML = '●&nbsp;Offline';
-    document.getElementById('syncStatus').style.color = 'var(--amber)';
+    transactions = []; confirmedAmounts = {};
+    nextItemId=20; nextTxId=1000;
+    document.getElementById('syncStatus').innerHTML='● Offline — changes saved locally';
+    document.getElementById('syncStatus').style.color='var(--amber)';
   }
   renderAll();
 }
 
+// ── Save ────────────────────────────────────────────────────
 function scheduleSave() {
   showBanner('saving','Saving…');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveAll, 1400);
 }
-
 async function saveAll() {
   try {
     const settings = {
       balance: document.getElementById('settingBalance').value,
       threshold: document.getElementById('settingThreshold').value,
-      horizon: horizon
+      horizon
     };
     await Promise.all([
-      apiPost({ action:'saveItems', items }),
-      apiPost({ action:'saveSettings', settings })
+      apiPost({action:'saveItems', items}),
+      apiPost({action:'saveSettings', settings}),
+      apiPost({action:'saveTransactions', transactions}),
+      apiPost({action:'saveConfirmed', confirmedAmounts})
     ]);
-    showBanner('saved','Saved ✓');
-    setTimeout(hideBanner, 2200);
+    showBanner('saved','Saved ✓'); setTimeout(hideBanner,2200);
   } catch(e) {
-    showBanner('error','Save failed — check connection');
-    setTimeout(hideBanner, 3000);
+    showBanner('error','Save failed — check connection'); setTimeout(hideBanner,3500);
   }
 }
+function showBanner(cls,msg){ const b=document.getElementById('saveBanner'); b.className='save-banner '+cls+' show'; b.textContent=msg; }
+function hideBanner(){ document.getElementById('saveBanner').classList.remove('show'); }
 
-function showBanner(cls, msg) {
-  const b = document.getElementById('saveBanner');
-  b.className = 'save-banner ' + cls + ' show';
-  b.textContent = msg;
-}
-function hideBanner() {
-  document.getElementById('saveBanner').classList.remove('show');
-}
-
+// ── Projection engine ────────────────────────────────────────
 function generateDates(item, start, end) {
-  const dates = [];
-  if (item.freq === 'monthly') {
-    const d = new Date(start.getFullYear(), start.getMonth(), 1);
-    while (d <= end) {
-      const t = new Date(d.getFullYear(), d.getMonth(), item.day);
-      if (t >= start && t <= end) dates.push(new Date(t));
-      d.setMonth(d.getMonth()+1);
-    }
-  } else if (item.freq === 'biweekly') {
-    const cur = new Date(start);
-    const target = parseInt(item.day) % 7;
-    while (cur.getDay() !== target) cur.setDate(cur.getDate()+1);
-    while (cur <= end) { dates.push(new Date(cur)); cur.setDate(cur.getDate()+14); }
-  } else if (item.freq === 'weekly') {
-    const cur = new Date(start);
-    const target = parseInt(item.day) % 7;
-    while (cur.getDay() !== target) cur.setDate(cur.getDate()+1);
-    while (cur <= end) { dates.push(new Date(cur)); cur.setDate(cur.getDate()+7); }
-  } else if (item.freq === 'once') {
-    const t = new Date(start); t.setDate(item.day);
-    if (t >= start && t <= end) dates.push(t);
+  const dates=[];
+  if (item.freq==='monthly') {
+    const d=new Date(start.getFullYear(),start.getMonth(),1);
+    while(d<=end){ const t=new Date(d.getFullYear(),d.getMonth(),Math.min(item.day,28)); if(t>=start&&t<=end)dates.push(new Date(t)); d.setMonth(d.getMonth()+1); }
+  } else if(item.freq==='biweekly') {
+    const cur=new Date(start); const tgt=parseInt(item.day)%7;
+    while(cur.getDay()!==tgt)cur.setDate(cur.getDate()+1);
+    while(cur<=end){dates.push(new Date(cur));cur.setDate(cur.getDate()+14);}
+  } else if(item.freq==='weekly') {
+    const cur=new Date(start); const tgt=parseInt(item.day)%7;
+    while(cur.getDay()!==tgt)cur.setDate(cur.getDate()+1);
+    while(cur<=end){dates.push(new Date(cur));cur.setDate(cur.getDate()+7);}
+  } else if(item.freq==='once'){
+    const t=new Date(start);t.setDate(item.day);
+    if(t>=start&&t<=end)dates.push(t);
   }
   return dates;
 }
 
 function buildProjection() {
   const startBal = parseFloat(document.getElementById('settingBalance').value)||0;
-  const start = new Date(); start.setHours(0,0,0,0);
-  const end = new Date(start); end.setDate(end.getDate()+horizon);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const end = new Date(today); end.setDate(end.getDate()+horizon);
+
+  // Apply all past & today's manual transactions to get true current balance
+  const txActual = transactions
+    .map(t=>({...t, dateObj: new Date(t.date+'T00:00:00')}))
+    .sort((a,b)=>a.dateObj-b.dateObj);
+
+  let runningBal = startBal;
+  txActual.forEach(t => {
+    if(t.dateObj <= today) runningBal += (t.type==='credit' ? t.amount : -t.amount);
+  });
+
+  // Build future events
   const events = [];
+
+  // Future manual transactions
+  txActual.forEach(t => {
+    if(t.dateObj > today) events.push({date:t.dateObj, amount:(t.type==='credit'?t.amount:-t.amount), confirmed:true, label:t.name});
+  });
+
+  // Recurring items
   items.forEach(item => {
-    generateDates(item, start, end).forEach(d => {
-      events.push({ date:d, amount: item.type==='credit' ? item.amount : -item.amount });
+    generateDates(item, today, end).forEach(d => {
+      const mkey = fmtMonthKey(d);
+      const ckey = item.id+'_'+mkey;
+      const confirmedAmt = confirmedAmounts[ckey];
+      const amt = confirmedAmt !== undefined ? confirmedAmt : item.amount;
+      const isConfirmed = confirmedAmt !== undefined;
+      events.push({
+        date: d,
+        amount: item.type==='credit' ? amt : -amt,
+        confirmed: isConfirmed,
+        label: item.name
+      });
     });
   });
+
   events.sort((a,b)=>a.date-b.date);
-  const points = [{ date:new Date(start), balance:startBal }];
-  let bal = startBal;
-  events.forEach(ev => { bal+=ev.amount; points.push({ date:new Date(ev.date), balance:bal }); });
-  return points;
+
+  // Build point series — split into confirmed and projected segments
+  const confirmedPoints = [{date:new Date(today), balance:runningBal, confirmed:true}];
+  const projectedPoints = [{date:new Date(today), balance:runningBal, confirmed:true}];
+
+  let bal = runningBal;
+  let lastConfirmedBal = runningBal;
+  let hitProjected = false;
+
+  events.forEach(ev => {
+    bal += ev.amount;
+    if(ev.confirmed && !hitProjected) {
+      confirmedPoints.push({date:new Date(ev.date), balance:bal});
+      lastConfirmedBal = bal;
+    } else {
+      hitProjected = true;
+    }
+    projectedPoints.push({date:new Date(ev.date), balance:bal});
+  });
+
+  return { confirmedPoints, projectedPoints, currentBalance: runningBal, today };
 }
 
+// ── Render all ───────────────────────────────────────────────
 function renderAll() {
-  renderHeader();
-  renderChips();
+  const { currentBalance, projectedPoints, today } = buildProjection();
+  const th = parseFloat(document.getElementById('settingThreshold').value)||1000;
+  const minBal = Math.min(...projectedPoints.map(p=>p.balance));
+  const cls = minBal<th?'danger':minBal<th*2?'warn':'good';
+  const colors={danger:'#DC2626',warn:'#D97706',good:'#16A34A'};
+
+  document.getElementById('headerBalance').textContent = fmtFull(currentBalance);
+  document.getElementById('headerSub').innerHTML = `Projected low: <strong style="color:${colors[cls]}">${fmtFull(minBal)}</strong>`;
+  document.getElementById('headerAsOf').textContent = 'as of '+fmtDateLong(today);
+
+  renderChips(currentBalance, minBal, th);
   renderChart();
   renderTroughs();
-  renderItems();
+  renderTransactions();
+  renderRecurring();
 }
 
-function getThreshold() {
-  return parseFloat(document.getElementById('settingThreshold').value)||1000;
-}
-
-function renderHeader() {
-  const bal = parseFloat(document.getElementById('settingBalance').value)||0;
-  document.getElementById('headerBalance').textContent = fmtFull(bal);
-  const points = buildProjection();
-  const minBal = Math.min(...points.map(p=>p.balance));
-  const th = getThreshold();
-  const cls = minBal < th ? 'danger' : minBal < th*2 ? 'warn' : 'good';
-  const colors = { danger:'#DC2626', warn:'#D97706', good:'#16A34A' };
-  document.getElementById('headerSub').innerHTML =
-    `Projected low: <strong style="color:${colors[cls]}">${fmtFull(minBal)}</strong>`;
-}
-
-function renderChips() {
-  const points = buildProjection();
-  const th = getThreshold();
-  const minBal = Math.min(...points.map(p=>p.balance));
-  const bal = parseFloat(document.getElementById('settingBalance').value)||0;
-  const cls = minBal < th ? 'danger' : minBal < th*2 ? 'warn' : 'good';
+function renderChips(bal, minBal, th) {
+  const cls = minBal<th?'danger':minBal<th*2?'warn':'good';
   const monthlyOut = items.filter(i=>i.type==='debit'&&i.freq==='monthly').reduce((s,i)=>s+i.amount,0);
-  const monthlyIn = items.filter(i=>i.type==='credit'&&i.freq==='monthly').reduce((s,i)=>s+i.amount,0)
-    + items.filter(i=>i.type==='credit'&&i.freq==='biweekly').reduce((s,i)=>s+i.amount*2.17,0);
   document.getElementById('metricChips').innerHTML = `
+    <div class="chip"><div class="chip-label">True balance</div><div class="chip-value">${fmtFull(bal)}</div></div>
     <div class="chip"><div class="chip-label">Projected low</div><div class="chip-value ${cls}">${fmtFull(minBal)}</div></div>
     <div class="chip"><div class="chip-label">Monthly out</div><div class="chip-value">${fmtFull(monthlyOut)}</div></div>
-    <div class="chip"><div class="chip-label">Monthly in</div><div class="chip-value good">${fmtFull(monthlyIn)}</div></div>
-    <div class="chip"><div class="chip-label">Items</div><div class="chip-value">${items.length}</div></div>
+    <div class="chip"><div class="chip-label">Actuals</div><div class="chip-value">${transactions.length}</div></div>
   `;
 }
 
 function renderChart() {
-  const points = buildProjection();
-  const th = getThreshold();
-  const labels = points.map(p => fmtDate(p.date));
-  const data = points.map(p => Math.round(p.balance));
-  if (chart) { chart.destroy(); chart = null; }
-  chart = new Chart(document.getElementById('runwayChart'), {
+  const { confirmedPoints, projectedPoints } = buildProjection();
+  const th = parseFloat(document.getElementById('settingThreshold').value)||1000;
+  const allPoints = projectedPoints;
+
+  const labels = allPoints.map(p=>fmtDate(p.date));
+  const projData = allPoints.map(p=>parseFloat(p.balance.toFixed(2)));
+
+  // Build confirmed dataset — null after last confirmed point
+  const confirmedDates = new Set(confirmedPoints.map(p=>p.date.toDateString()));
+  const confData = allPoints.map(p=> confirmedDates.has(p.date.toDateString()) ? parseFloat(p.balance.toFixed(2)) : null);
+
+  if(chart){chart.destroy();chart=null;}
+  chart = new Chart(document.getElementById('runwayChart'),{
     type:'line',
     data:{
       labels,
       datasets:[
-        { label:'Balance', data, borderColor:'#1A5FA8', backgroundColor:'rgba(26,95,168,0.08)', borderWidth:2, pointRadius:0, pointHoverRadius:4, fill:true, tension:0.25 },
-        { label:'Danger', data:points.map(()=>Math.round(th)), borderColor:'#DC2626', borderWidth:1.5, borderDash:[5,4], pointRadius:0, fill:false }
+        { label:'Projected', data:projData, borderColor:'#94A3B8', backgroundColor:'rgba(148,163,184,0.06)', borderWidth:1.5, borderDash:[5,4], pointRadius:0, fill:true, tension:0.2 },
+        { label:'Confirmed', data:confData, borderColor:'#1A5FA8', backgroundColor:'rgba(26,95,168,0.09)', borderWidth:2.5, pointRadius:0, fill:true, tension:0.2, spanGaps:false },
+        { label:'Threshold', data:allPoints.map(()=>th), borderColor:'#DC2626', borderWidth:1.5, borderDash:[4,4], pointRadius:0, fill:false }
       ]
     },
     options:{
       responsive:true, maintainAspectRatio:false,
-      interaction:{ mode:'index', intersect:false },
-      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:ctx => ctx.dataset.label==='Balance' ? ' ' + fmtFull(ctx.raw) : ' Threshold: ' + fmtFull(ctx.raw) } } },
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label==='Threshold'?' Threshold: '+fmtFull(ctx.raw):' '+ctx.dataset.label+': '+fmtFull(ctx.raw)}}
+      },
       scales:{
-        x:{ ticks:{ maxTicksLimit:6, color:'#94A3B8', font:{ size:10 }, autoSkip:true }, grid:{ color:'rgba(148,163,184,0.15)' } },
-        y:{ ticks:{ color:'#94A3B8', font:{ size:10 }, callback:v=>fmtFull(v) }, grid:{ color:'rgba(148,163,184,0.15)' } }
+        x:{ticks:{maxTicksLimit:6,color:'#94A3B8',font:{size:10},autoSkip:true},grid:{color:'rgba(148,163,184,0.15)'}},
+        y:{ticks:{color:'#94A3B8',font:{size:10},callback:v=>fmtFull(v)},grid:{color:'rgba(148,163,184,0.15)'}}
       }
     }
   });
 }
 
 function renderTroughs() {
-  const points = buildProjection();
-  const th = getThreshold();
-  const byMonth = {};
-  points.forEach(p => {
-    const key = p.date.getFullYear()+'-'+p.date.getMonth();
-    if (!byMonth[key]||p.balance < byMonth[key].balance) byMonth[key] = p;
-  });
-  const troughs = Object.values(byMonth).sort((a,b)=>a.balance-b.balance).slice(0,10);
-  const container = document.getElementById('troughContainer');
-  if (troughs.length===0) {
-    container.innerHTML = '<div class="empty-state">No data yet</div>';
-    return;
-  }
-  container.innerHTML = troughs.map(t => {
-    const cls = t.balance < th ? 'danger' : t.balance < th*2 ? 'warn' : 'good';
-    return `<div class="trough-item ${cls}">
-      <span class="trough-date">${fmtDateLong(t.date)}</span>
-      <span class="trough-val">${fmtFull(t.balance)}</span>
-    </div>`;
-  }).join('');
+  const { projectedPoints } = buildProjection();
+  const th = parseFloat(document.getElementById('settingThreshold').value)||1000;
+  const byMonth={};
+  projectedPoints.forEach(p=>{ const k=fmtMonthKey(p.date); if(!byMonth[k]||p.balance<byMonth[k].balance)byMonth[k]=p; });
+  const troughs=Object.values(byMonth).sort((a,b)=>a.balance-b.balance).slice(0,10);
+  document.getElementById('troughContainer').innerHTML = troughs.length===0
+    ? '<div class="empty-state">No data yet</div>'
+    : troughs.map(t=>{ const c=t.balance<th?'danger':t.balance<th*2?'warn':'good'; return `<div class="trough-item ${c}"><span class="trough-date">${fmtDateLong(t.date)}</span><span class="trough-val">${fmtFull(t.balance)}</span></div>`; }).join('');
 }
 
-function renderItems() {
-  const list = document.getElementById('itemsList');
-  if (items.length===0) { list.innerHTML='<div class="empty-state">No items yet — tap + to add one</div>'; return; }
-  const sorted = [...items].sort((a,b)=> a.type===b.type ? a.name.localeCompare(b.name) : a.type==='debit'?1:-1);
-  list.innerHTML = sorted.map(item => `
-    <div class="item-card" onclick="openEditSheet(${item.id})">
-      <div class="item-icon ${item.type}">
-        ${item.type==='credit'
-          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
-          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'
-        }
-      </div>
-      <div class="item-info">
-        <div class="item-name">${item.name}</div>
-        <div class="item-meta">${freqLabel(item)}</div>
-      </div>
-      <div class="item-amount">
-        <div class="item-amt-val ${item.type}">${item.type==='credit'?'+':''}${fmtFull(item.amount)}</div>
-        ${item.variance>0 ? `<div class="item-variance">±${fmtFull(item.variance)}</div>` : ''}
-      </div>
-      <button class="item-delete" onclick="event.stopPropagation();deleteItem(${item.id})" aria-label="Delete ${item.name}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-      </button>
-    </div>
-  `).join('');
+function renderTransactions() {
+  const sorted=[...transactions].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById('txList').innerHTML = sorted.length===0
+    ? '<div class="empty-state">No manual transactions yet<br>Tap + to add one</div>'
+    : sorted.map(t=>`
+      <div class="tx-card">
+        <div class="tx-dot ${t.type}"></div>
+        <div class="tx-info">
+          <div class="tx-name">${t.name}</div>
+          <div class="tx-date">${fmtDateLong(new Date(t.date+'T00:00:00'))}</div>
+        </div>
+        <div class="tx-amount ${t.type}">${t.type==='credit'?'+':'−'}${fmtFull(t.amount)}</div>
+        <button class="tx-delete" onclick="deleteTx(${t.id})" aria-label="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+      </div>`).join('');
 }
 
+function renderRecurring() {
+  const sorted=[...items].sort((a,b)=>a.type===b.type?a.name.localeCompare(b.name):a.type==='debit'?1:-1);
+  document.getElementById('recurringList').innerHTML = sorted.length===0
+    ? '<div class="empty-state">No recurring items</div>'
+    : sorted.map(item=>{
+        // Find any confirmed months for this item
+        const confirmed = Object.entries(confirmedAmounts)
+          .filter(([k])=>k.startsWith(item.id+'_'))
+          .sort((a,b)=>b[0].localeCompare(a[0]))
+          .slice(0,3);
+        const confirmedRows = confirmed.map(([k,amt])=>{
+          const month = k.split('_')[1];
+          const d = new Date(month+'-01T00:00:00');
+          const label = d.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+          return `<div class="confirmed-row">
+            <span class="confirmed-month">${label}</span>
+            <div class="confirmed-right">
+              <span class="confirmed-amt">${fmtFull(amt)}</span>
+              <span class="confirmed-clear" onclick="clearConfirmed('${k}')">✕</span>
+            </div>
+          </div>`;
+        }).join('');
+        return `
+        <div class="item-card">
+          <div class="item-card-top">
+            <div class="item-icon ${item.type}">
+              ${item.type==='credit'
+                ?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
+                :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'}
+            </div>
+            <div class="item-info">
+              <div class="item-name">${item.name}</div>
+              <div class="item-meta">${freqLabel(item)}${item.variance>0?` · ±${fmtFull(item.variance)}`:''}</div>
+            </div>
+            <div class="item-right">
+              <div class="item-amt ${item.type}">${item.type==='credit'?'+':''}${fmtFull(item.amount)}</div>
+              <div class="item-variance">est.</div>
+            </div>
+          </div>
+          ${confirmed.length>0?`<div class="confirmed-list" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-100)">${confirmedRows}</div>`:''}
+          <div class="item-actions">
+            <button class="item-btn confirm" onclick="openConfirmSheet(${item.id})">Lock in actual</button>
+            <button class="item-btn" onclick="openEditItemSheet(${item.id})">Edit</button>
+            <button class="item-btn danger" onclick="deleteItem(${item.id})">Delete</button>
+          </div>
+        </div>`;
+      }).join('');
+}
+
+// ── Tab switching ────────────────────────────────────────────
 function switchTab(name, el) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('section-'+name).classList.add('active');
   el.classList.add('active');
-  currentSection = name;
-  document.getElementById('fab').style.display = name==='items' ? 'flex' : 'none';
+  currentTab = name;
+  const fab = document.getElementById('fab');
+  if(name==='transactions'||name==='recurring') { fab.style.display='flex'; fab.onclick = name==='transactions' ? openAddTxSheet : openAddItemSheet; }
+  else { fab.style.display='none'; }
 }
 
 function setHorizon(h, btn) {
-  horizon = h;
+  horizon=h; document.getElementById('settingHorizon').value=h;
   document.querySelectorAll('.horizon-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('settingHorizon').value = h;
-  renderAll();
-  scheduleSave();
+  renderAll(); scheduleSave();
 }
+function onSettingChange(){ renderAll(); scheduleSave(); }
 
-function onSettingChange() { renderAll(); scheduleSave(); }
-function openSettings() { switchTab('settings', document.getElementById('navSettings')); }
-
-// Sheet management
-let selectedType = 'debit';
-
-function setType(type) {
-  selectedType = type;
-  document.getElementById('fieldType').value = type;
-  document.getElementById('btnDebit').className = 'type-btn' + (type==='debit'?' active debit':'');
-  document.getElementById('btnCredit').className = 'type-btn' + (type==='credit'?' active credit':'');
-}
-
-function updateDayLabel() {
-  const freq = document.getElementById('fieldFreq').value;
-  const label = document.getElementById('dayLabel');
-  if (freq==='monthly'||freq==='once') label.textContent = 'Day of month';
-  else label.textContent = 'Day of week (0=Sun)';
-}
-
-function openAddSheet() {
-  document.getElementById('sheetTitle').textContent = 'Add item';
-  document.getElementById('editId').value = '';
-  document.getElementById('fieldName').value = '';
-  document.getElementById('fieldAmount').value = '';
-  document.getElementById('fieldVariance').value = '';
-  document.getElementById('fieldFreq').value = 'monthly';
-  document.getElementById('fieldDay').value = '1';
-  setType('debit');
-  updateDayLabel();
-  document.getElementById('overlay').classList.add('open');
-  document.getElementById('sheet').classList.add('open');
-  setTimeout(()=>document.getElementById('fieldName').focus(), 350);
-}
-
-function openEditSheet(id) {
-  const item = items.find(i=>i.id==id);
-  if (!item) return;
-  document.getElementById('sheetTitle').textContent = 'Edit item';
-  document.getElementById('editId').value = id;
-  document.getElementById('fieldName').value = item.name;
-  document.getElementById('fieldAmount').value = item.amount;
-  document.getElementById('fieldVariance').value = item.variance||0;
-  document.getElementById('fieldFreq').value = item.freq;
-  document.getElementById('fieldDay').value = item.day;
-  setType(item.type);
-  updateDayLabel();
+// ── Sheet helpers ────────────────────────────────────────────
+let sheetSelectedType = 'debit';
+function openSheet(title, bodyHTML) {
+  document.getElementById('sheetTitle').textContent = title;
+  document.getElementById('sheetBody').innerHTML = bodyHTML;
   document.getElementById('overlay').classList.add('open');
   document.getElementById('sheet').classList.add('open');
 }
-
 function closeSheet() {
   document.getElementById('overlay').classList.remove('open');
   document.getElementById('sheet').classList.remove('open');
 }
+function setTypeBtn(type) {
+  sheetSelectedType = type;
+  document.getElementById('btnDebit').className='type-btn'+(type==='debit'?' active debit':'');
+  document.getElementById('btnCredit').className='type-btn'+(type==='credit'?' active credit':'');
+}
 
+// ── Add manual transaction ───────────────────────────────────
+function openAddTxSheet() {
+  const today = new Date().toISOString().split('T')[0];
+  openSheet('Add transaction', `
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input class="form-input" type="text" id="txName" placeholder="e.g. Check to school">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <div class="type-btns">
+        <button class="type-btn active debit" id="btnDebit" onclick="setTypeBtn('debit')">Debit (out)</button>
+        <button class="type-btn credit" id="btnCredit" onclick="setTypeBtn('credit')">Credit (in)</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Amount ($)</label>
+        <input class="form-input" type="number" id="txAmount" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="txDate" value="${today}">
+      </div>
+    </div>
+    <button class="btn-save" onclick="saveTx()">Add transaction</button>
+  `);
+  sheetSelectedType = 'debit';
+  setTimeout(()=>document.getElementById('txName').focus(),350);
+}
+
+function saveTx() {
+  const name = document.getElementById('txName').value.trim();
+  const amount = parseFloat(document.getElementById('txAmount').value);
+  const date = document.getElementById('txDate').value;
+  if(!name||!amount||!date) return;
+  transactions.push({ id:nextTxId++, name, type:sheetSelectedType, amount, date });
+  closeSheet(); renderAll(); scheduleSave();
+}
+
+function deleteTx(id) {
+  if(!confirm('Remove this transaction?')) return;
+  transactions = transactions.filter(t=>t.id!=id);
+  renderAll(); scheduleSave();
+}
+
+// ── Add recurring item ───────────────────────────────────────
+function openAddItemSheet() {
+  openSheet('Add recurring item', itemFormHTML(null));
+  sheetSelectedType = 'debit';
+}
+function openEditItemSheet(id) {
+  const item = items.find(i=>i.id==id);
+  if(!item) return;
+  openSheet('Edit item', itemFormHTML(item));
+  sheetSelectedType = item.type;
+}
+function itemFormHTML(item) {
+  const dayLabel = (!item||item.freq==='monthly'||item.freq==='once') ? 'Day of month' : 'Day (0=Sun)';
+  return `
+    <input type="hidden" id="editItemId" value="${item?item.id:''}">
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input class="form-input" type="text" id="itemName" placeholder="e.g. Mortgage" value="${item?item.name:''}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <div class="type-btns">
+        <button class="type-btn${!item||item.type==='debit'?' active debit':''}" id="btnDebit" onclick="setTypeBtn('debit')">Debit (out)</button>
+        <button class="type-btn${item&&item.type==='credit'?' active credit':''}" id="btnCredit" onclick="setTypeBtn('credit')">Credit (in)</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Amount ($)</label>
+        <input class="form-input" type="number" id="itemAmount" placeholder="0.00" step="0.01" min="0" value="${item?item.amount:''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Variance ± ($)</label>
+        <input class="form-input" type="number" id="itemVariance" placeholder="0" step="50" min="0" value="${item?item.variance:0}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Frequency</label>
+        <select class="form-input" id="itemFreq" onchange="updateDayLbl()">
+          <option value="monthly"${!item||item.freq==='monthly'?' selected':''}>Monthly</option>
+          <option value="biweekly"${item&&item.freq==='biweekly'?' selected':''}>Bi-weekly</option>
+          <option value="weekly"${item&&item.freq==='weekly'?' selected':''}>Weekly</option>
+          <option value="once"${item&&item.freq==='once'?' selected':''}>One-time</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="dayLbl">${dayLabel}</label>
+        <input class="form-input" type="number" id="itemDay" min="0" max="31" step="1" value="${item?item.day:1}">
+      </div>
+    </div>
+    <button class="btn-save" onclick="saveItem()">Save item</button>
+    ${item?`<button class="btn-danger-full" onclick="deleteItem(${item.id})">Delete item</button>`:''}
+  `;
+}
+function updateDayLbl() {
+  const f = document.getElementById('itemFreq').value;
+  document.getElementById('dayLbl').textContent = (f==='monthly'||f==='once')?'Day of month':'Day (0=Sun)';
+}
 function saveItem() {
-  const name = document.getElementById('fieldName').value.trim();
-  const amount = parseFloat(document.getElementById('fieldAmount').value)||0;
-  const variance = parseFloat(document.getElementById('fieldVariance').value)||0;
-  const freq = document.getElementById('fieldFreq').value;
-  const day = parseInt(document.getElementById('fieldDay').value)||1;
-  const type = document.getElementById('fieldType').value;
-  if (!name) { document.getElementById('fieldName').focus(); return; }
-  const editId = document.getElementById('editId').value;
-  if (editId) {
-    const item = items.find(i=>i.id==editId);
-    if (item) { item.name=name; item.amount=amount; item.variance=variance; item.freq=freq; item.day=day; item.type=type; }
+  const name = document.getElementById('itemName').value.trim();
+  const amount = parseFloat(document.getElementById('itemAmount').value)||0;
+  const variance = parseFloat(document.getElementById('itemVariance').value)||0;
+  const freq = document.getElementById('itemFreq').value;
+  const day = parseInt(document.getElementById('itemDay').value)||1;
+  const editId = document.getElementById('editItemId').value;
+  if(!name) { document.getElementById('itemName').focus(); return; }
+  if(editId) {
+    const item=items.find(i=>i.id==editId);
+    if(item){item.name=name;item.type=sheetSelectedType;item.amount=amount;item.variance=variance;item.freq=freq;item.day=day;}
   } else {
-    items.push({ id:nextId++, name, type, amount, freq, day, variance });
+    items.push({id:nextItemId++,name,type:sheetSelectedType,amount,freq,day,variance});
   }
-  closeSheet();
-  renderAll();
-  scheduleSave();
+  closeSheet(); renderAll(); scheduleSave();
 }
-
 function deleteItem(id) {
-  if (!confirm('Remove this item?')) return;
-  items = items.filter(i=>i.id!=id);
-  renderAll();
-  scheduleSave();
+  if(!confirm('Remove this recurring item?')) return;
+  items=items.filter(i=>i.id!=id);
+  Object.keys(confirmedAmounts).filter(k=>k.startsWith(id+'_')).forEach(k=>delete confirmedAmounts[k]);
+  closeSheet(); renderAll(); scheduleSave();
 }
 
-// Init
+// ── Confirm actual amount ────────────────────────────────────
+function openConfirmSheet(itemId) {
+  const item = items.find(i=>i.id==itemId);
+  if(!item) return;
+  const now = new Date();
+  const thisMonth = fmtMonthKey(now);
+  const nextMonth = fmtMonthKey(new Date(now.getFullYear(), now.getMonth()+1, 1));
+  const monthLabel = (m) => { const d=new Date(m+'-01T00:00:00'); return d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); };
+  openSheet('Lock in actual — '+item.name, `
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">Replace the estimated amount with the real number for a specific month. The projection will use this exact figure.</p>
+    <div class="form-group">
+      <label class="form-label">Month</label>
+      <select class="form-input" id="confirmMonth">
+        <option value="${thisMonth}">${monthLabel(thisMonth)} (this month)</option>
+        <option value="${nextMonth}">${monthLabel(nextMonth)} (next month)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Actual amount ($)</label>
+      <input class="form-input" type="number" id="confirmAmt" placeholder="${item.amount.toFixed(2)}" step="0.01" min="0">
+    </div>
+    <button class="btn-save" onclick="saveConfirmed(${itemId})">Lock in amount</button>
+  `);
+  setTimeout(()=>document.getElementById('confirmAmt').focus(),350);
+}
+function saveConfirmed(itemId) {
+  const month = document.getElementById('confirmMonth').value;
+  const amt = parseFloat(document.getElementById('confirmAmt').value);
+  if(isNaN(amt)) return;
+  confirmedAmounts[itemId+'_'+month] = amt;
+  closeSheet(); renderAll(); scheduleSave();
+}
+function clearConfirmed(key) {
+  delete confirmedAmounts[key];
+  renderAll(); scheduleSave();
+}
+
+// ── Init ─────────────────────────────────────────────────────
 loadFromSheet();
 </script>
 </body>
