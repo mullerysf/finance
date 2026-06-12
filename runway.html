@@ -185,6 +185,34 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
 .pb { height:70px; }
 .tag-confirmed { display:inline-block; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; background:var(--green-light); color:var(--green); margin-left:6px; vertical-align:middle; letter-spacing:0.03em; }
 .tag-projected { display:inline-block; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; background:var(--gray-100); color:var(--gray-400); margin-left:6px; vertical-align:middle; letter-spacing:0.03em; }
+/* Ledger */
+.ledger-filter { display:flex; gap:8px; padding:0 16px; margin-bottom:10px; overflow-x:auto; scrollbar-width:none; }
+.ledger-filter::-webkit-scrollbar { display:none; }
+.filter-btn { flex-shrink:0; padding:5px 14px; font-size:12px; font-weight:600; border:1px solid var(--gray-200); border-radius:20px; background:none; color:var(--gray-400); cursor:pointer; font-family:'Inter',sans-serif; white-space:nowrap; }
+.filter-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+.ledger-month-header { font-size:11px; font-weight:700; color:var(--gray-400); letter-spacing:0.07em; text-transform:uppercase; padding:12px 16px 4px; }
+.ledger-row { display:grid; grid-template-columns:1fr auto auto; gap:6px; align-items:center; padding:9px 12px; margin:0 16px 2px; background:var(--card); border-radius:var(--radius-sm); border-left:3px solid transparent; }
+.ledger-row.is-actual { border-left-color:var(--blue); }
+.ledger-row.is-projected { border-left-color:var(--gray-200); }
+.ledger-row.is-confirmed { border-left-color:var(--green); }
+.ledger-left { min-width:0; }
+.ledger-name { font-size:13px; font-weight:500; color:var(--gray-800); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ledger-date { font-size:11px; color:var(--gray-400); margin-top:1px; }
+.ledger-badge { font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px; display:inline-block; margin-left:5px; vertical-align:middle; }
+.ledger-badge.actual { background:#DBEAFE; color:#1E40AF; }
+.ledger-badge.confirmed { background:var(--green-light); color:var(--green); }
+.ledger-badge.projected { background:var(--gray-100); color:var(--gray-400); }
+.ledger-amount { font-size:13px; font-weight:600; text-align:right; white-space:nowrap; min-width:72px; }
+.ledger-amount.credit { color:var(--green); }
+.ledger-amount.debit { color:var(--red); }
+.ledger-balance { font-size:13px; font-weight:700; text-align:right; white-space:nowrap; min-width:82px; }
+.ledger-balance.danger { color:var(--red); }
+.ledger-balance.warn { color:var(--amber); }
+.ledger-balance.ok { color:var(--gray-800); }
+.ledger-col-headers { display:grid; grid-template-columns:1fr auto auto; gap:6px; padding:4px 12px; margin:0 16px 2px; }
+.ledger-col-headers span { font-size:10px; font-weight:600; color:var(--gray-400); text-transform:uppercase; letter-spacing:0.05em; }
+.ledger-col-headers span:nth-child(2) { min-width:72px; text-align:right; }
+.ledger-col-headers span:nth-child(3) { min-width:82px; text-align:right; }
 </style>
 </head>
 <body>
@@ -217,9 +245,9 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
     <span>Recurring</span>
   </button>
-  <button class="nav-tab" onclick="switchTab('lowpoints',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    <span>Low Points</span>
+  <button class="nav-tab" onclick="switchTab('ledger',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    <span>Ledger</span>
   </button>
   <button class="nav-tab" onclick="switchTab('settings',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -246,6 +274,27 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
       <canvas id="runwayChart" role="img" aria-label="Projected checking account balance over time"></canvas>
     </div>
   </div>
+  <div class="section-heading">Monthly low points</div>
+  <div id="troughContainer"></div>
+</div>
+
+<!-- Ledger -->
+<div class="section" id="section-ledger">
+  <div class="section-heading" style="margin-bottom:6px">Full transaction ledger</div>
+  <div class="ledger-filter" id="ledgerFilter">
+    <button class="filter-btn active" onclick="setLedgerFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setLedgerFilter('actual',this)">Actuals only</button>
+    <button class="filter-btn" onclick="setLedgerFilter('projected',this)">Projected only</button>
+    <button class="filter-btn" onclick="setLedgerFilter('debits',this)">Debits</button>
+    <button class="filter-btn" onclick="setLedgerFilter('credits',this)">Credits</button>
+  </div>
+  <div class="ledger-col-headers">
+    <span>Description</span>
+    <span>Amount</span>
+    <span>Balance</span>
+  </div>
+  <div id="ledgerList"></div>
+  <div class="pb"></div>
 </div>
 
 <!-- Actuals / Transactions -->
@@ -260,12 +309,6 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
   <div class="section-heading">Recurring items</div>
   <div id="recurringList"></div>
   <div class="pb"></div>
-</div>
-
-<!-- Low Points -->
-<div class="section" id="section-lowpoints">
-  <div class="section-heading">Monthly low points</div>
-  <div id="troughContainer"></div>
 </div>
 
 <!-- Settings -->
@@ -536,6 +579,7 @@ function renderAll() {
   renderTroughs();
   renderTransactions();
   renderRecurring();
+  if(currentTab==='ledger') renderLedger();
 }
 
 function renderChips(bal, minBal, th) {
@@ -673,6 +717,7 @@ function switchTab(name, el) {
   const fab = document.getElementById('fab');
   if(name==='transactions'||name==='recurring') { fab.style.display='flex'; fab.onclick = name==='transactions' ? openAddTxSheet : openAddItemSheet; }
   else { fab.style.display='none'; }
+  if(name==='ledger') renderLedger();
 }
 
 function setHorizon(h, btn) {
@@ -865,6 +910,106 @@ function saveConfirmed(itemId) {
 function clearConfirmed(key) {
   delete confirmedAmounts[key];
   renderAll(); scheduleSave();
+}
+
+// ── Ledger ───────────────────────────────────────────────────
+let ledgerFilter = 'all';
+function setLedgerFilter(f, btn) {
+  ledgerFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLedger();
+}
+
+function buildLedgerRows() {
+  const startBal = parseFloat(document.getElementById('settingBalance').value)||0;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const end = new Date(today); end.setDate(end.getDate()+horizon);
+
+  const rows = [];
+
+  // Past manual transactions (actuals, already happened)
+  transactions
+    .map(t=>({...t, dateObj:new Date(t.date+'T00:00:00')}))
+    .forEach(t=>{
+      rows.push({
+        date: t.dateObj,
+        name: t.name,
+        type: t.type,
+        amount: t.amount,
+        kind: 'actual',
+        confirmed: true
+      });
+    });
+
+  // Future recurring items
+  items.forEach(item=>{
+    generateDates(item, today, end).forEach(d=>{
+      const mkey = fmtMonthKey(d);
+      const ckey = item.id+'_'+mkey;
+      const confirmedAmt = confirmedAmounts[ckey];
+      const amt = confirmedAmt !== undefined ? confirmedAmt : item.amount;
+      rows.push({
+        date: d,
+        name: item.name,
+        type: item.type,
+        amount: amt,
+        kind: confirmedAmt !== undefined ? 'confirmed' : 'projected',
+        confirmed: confirmedAmt !== undefined
+      });
+    });
+  });
+
+  // Sort all by date
+  rows.sort((a,b)=>a.date-b.date);
+
+  // Compute running balance
+  let bal = startBal;
+  // First apply past actuals to get starting point
+  rows.filter(r=>r.kind==='actual'&&r.date<=today).forEach(r=>{ bal += r.type==='credit'?r.amount:-r.amount; });
+  // Then assign running balance to future rows
+  let runningBal = bal;
+  const past = rows.filter(r=>r.kind==='actual'&&r.date<=today).map(r=>({...r,runningBal:null}));
+  // Recompute past running balances from start
+  let pastBal = startBal;
+  past.forEach(r=>{ pastBal += r.type==='credit'?r.amount:-r.amount; r.runningBal=pastBal; });
+  const future = rows.filter(r=>!(r.kind==='actual'&&r.date<=today));
+  future.forEach(r=>{ runningBal += r.type==='credit'?r.amount:-r.amount; r.runningBal=runningBal; });
+
+  return [...past, ...future].sort((a,b)=>a.date-b.date);
+}
+
+function renderLedger() {
+  const th = parseFloat(document.getElementById('settingThreshold').value)||1000;
+  let rows = buildLedgerRows();
+
+  if(ledgerFilter==='actual') rows=rows.filter(r=>r.kind==='actual');
+  else if(ledgerFilter==='projected') rows=rows.filter(r=>r.kind==='projected'||r.kind==='confirmed');
+  else if(ledgerFilter==='debits') rows=rows.filter(r=>r.type==='debit');
+  else if(ledgerFilter==='credits') rows=rows.filter(r=>r.type==='credit');
+
+  if(rows.length===0){ document.getElementById('ledgerList').innerHTML='<div class="empty-state">No entries match this filter</div>'; return; }
+
+  let lastMonth = '';
+  const html = rows.map(r=>{
+    const month = r.date.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    let monthHeader = '';
+    if(month!==lastMonth){ monthHeader=`<div class="ledger-month-header">${month}</div>`; lastMonth=month; }
+    const badgeClass = r.kind==='actual'?'actual':r.kind==='confirmed'?'confirmed':'projected';
+    const badgeLabel = r.kind==='actual'?'actual':r.kind==='confirmed'?'confirmed':'est.';
+    const rowClass = r.kind==='actual'?'is-actual':r.kind==='confirmed'?'is-confirmed':'is-projected';
+    const balClass = r.runningBal!==null ? (r.runningBal<th?'danger':r.runningBal<th*2?'warn':'ok') : 'ok';
+    const amtSign = r.type==='credit'?'+':'−';
+    return `${monthHeader}<div class="ledger-row ${rowClass}">
+      <div class="ledger-left">
+        <div class="ledger-name">${r.name}<span class="ledger-badge ${badgeClass}">${badgeLabel}</span></div>
+        <div class="ledger-date">${fmtDateLong(r.date)}</div>
+      </div>
+      <div class="ledger-amount ${r.type}">${amtSign}${fmtFull(r.amount)}</div>
+      <div class="ledger-balance ${balClass}">${r.runningBal!==null?fmtFull(r.runningBal):'—'}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('ledgerList').innerHTML = html;
 }
 
 // ── Init ─────────────────────────────────────────────────────
