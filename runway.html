@@ -369,6 +369,7 @@ const WEB_APP = 'https://script.google.com/macros/s/AKfycbwBMDS5WRCnv1nQSIywLGPa
 let items = [];       // recurring items
 let transactions = []; // manual one-off actuals
 let confirmedAmounts = {}; // key: "itemId_YYYY-MM" => amount
+let overrides = {};   // key: "skip_itemId_YYYY-MM-DD" => 'skip', or "itemId_YYYY-MM" => amount
 let nextItemId = 100;
 let nextTxId = 1000;
 let chart = null;
@@ -428,6 +429,7 @@ async function loadFromSheet() {
     items = (si && si.length>0) ? si : JSON.parse(JSON.stringify(DEFAULT_ITEMS));
     transactions = st || [];
     confirmedAmounts = sc || {};
+    overrides = res.data.overrides || {};
     nextItemId = items.length>0 ? Math.max(...items.map(i=>parseInt(i.id)||0))+1 : 100;
     nextTxId = transactions.length>0 ? Math.max(...transactions.map(t=>parseInt(t.id)||0))+1 : 1000;
     if (settings) {
@@ -464,7 +466,8 @@ async function saveAll() {
       apiPost({action:'saveItems', items}),
       apiPost({action:'saveSettings', settings}),
       apiPost({action:'saveTransactions', transactions}),
-      apiPost({action:'saveConfirmed', confirmedAmounts})
+      apiPost({action:'saveConfirmed', confirmedAmounts}),
+      apiPost({action:'saveOverrides', overrides})
     ]);
     showBanner('saved','Saved ✓'); setTimeout(hideBanner,2200);
   } catch(e) {
@@ -925,91 +928,172 @@ function buildLedgerRows() {
   const startBal = parseFloat(document.getElementById('settingBalance').value)||0;
   const today = new Date(); today.setHours(0,0,0,0);
   const end = new Date(today); end.setDate(end.getDate()+horizon);
-
   const rows = [];
 
-  // Past manual transactions (actuals, already happened)
+  // Manual transactions
   transactions
     .map(t=>({...t, dateObj:new Date(t.date+'T00:00:00')}))
     .forEach(t=>{
-      rows.push({
-        date: t.dateObj,
-        name: t.name,
-        type: t.type,
-        amount: t.amount,
-        kind: 'actual',
-        confirmed: true
-      });
+      rows.push({ date:t.dateObj, name:t.name, type:t.type, amount:t.amount,
+        kind:'actual', txId:t.id, itemId:null, dateKey:null });
     });
 
-  // Future recurring items
+  // Recurring items — skip ones that are skipped, apply overrides
   items.forEach(item=>{
     generateDates(item, today, end).forEach(d=>{
       const mkey = fmtMonthKey(d);
       const ckey = item.id+'_'+mkey;
-      const confirmedAmt = confirmedAmounts[ckey];
-      const amt = confirmedAmt !== undefined ? confirmedAmt : item.amount;
-      rows.push({
-        date: d,
-        name: item.name,
-        type: item.type,
-        amount: amt,
-        kind: confirmedAmt !== undefined ? 'confirmed' : 'projected',
-        confirmed: confirmedAmt !== undefined
-      });
+      const skipKey = 'skip_'+item.id+'_'+d.toISOString().split('T')[0];
+      if(overrides[skipKey]==='skip') return; // skipped occurrence
+      const overrideAmt = overrides[ckey] !== undefined ? overrides[ckey] : confirmedAmounts[ckey];
+      const amt = overrideAmt !== undefined ? overrideAmt : item.amount;
+      const isOverridden = overrideAmt !== undefined;
+      rows.push({ date:d, name:item.name, type:item.type, amount:amt,
+        kind: isOverridden ? 'confirmed' : 'projected',
+        txId:null, itemId:item.id, dateKey:d.toISOString().split('T')[0], mkey });
     });
   });
 
-  // Sort all by date
   rows.sort((a,b)=>a.date-b.date);
 
-  // Compute running balance
-  let bal = startBal;
-  // First apply past actuals to get starting point
-  rows.filter(r=>r.kind==='actual'&&r.date<=today).forEach(r=>{ bal += r.type==='credit'?r.amount:-r.amount; });
-  // Then assign running balance to future rows
-  let runningBal = bal;
-  const past = rows.filter(r=>r.kind==='actual'&&r.date<=today).map(r=>({...r,runningBal:null}));
-  // Recompute past running balances from start
+  // Running balance — past actuals first
   let pastBal = startBal;
-  past.forEach(r=>{ pastBal += r.type==='credit'?r.amount:-r.amount; r.runningBal=pastBal; });
-  const future = rows.filter(r=>!(r.kind==='actual'&&r.date<=today));
-  future.forEach(r=>{ runningBal += r.type==='credit'?r.amount:-r.amount; r.runningBal=runningBal; });
+  const past = rows.filter(r=>r.kind==='actual'&&r.date<=today);
+  past.forEach(r=>{ pastBal+=(r.type==='credit'?r.amount:-r.amount); r.runningBal=pastBal; });
 
-  return [...past, ...future].sort((a,b)=>a.date-b.date);
+  let futureBal = pastBal;
+  const future = rows.filter(r=>!(r.kind==='actual'&&r.date<=today));
+  future.forEach(r=>{ futureBal+=(r.type==='credit'?r.amount:-r.amount); r.runningBal=futureBal; });
+
+  return [...past,...future].sort((a,b)=>a.date-b.date);
 }
 
 function renderLedger() {
   const th = parseFloat(document.getElementById('settingThreshold').value)||1000;
   let rows = buildLedgerRows();
-
   if(ledgerFilter==='actual') rows=rows.filter(r=>r.kind==='actual');
   else if(ledgerFilter==='projected') rows=rows.filter(r=>r.kind==='projected'||r.kind==='confirmed');
   else if(ledgerFilter==='debits') rows=rows.filter(r=>r.type==='debit');
   else if(ledgerFilter==='credits') rows=rows.filter(r=>r.type==='credit');
 
-  if(rows.length===0){ document.getElementById('ledgerList').innerHTML='<div class="empty-state">No entries match this filter</div>'; return; }
+  if(!rows.length){ document.getElementById('ledgerList').innerHTML='<div class="empty-state">No entries match this filter</div>'; return; }
 
-  let lastMonth = '';
-  const html = rows.map(r=>{
-    const month = r.date.toLocaleDateString('en-US',{month:'long',year:'numeric'});
-    let monthHeader = '';
-    if(month!==lastMonth){ monthHeader=`<div class="ledger-month-header">${month}</div>`; lastMonth=month; }
-    const badgeClass = r.kind==='actual'?'actual':r.kind==='confirmed'?'confirmed':'projected';
-    const badgeLabel = r.kind==='actual'?'actual':r.kind==='confirmed'?'confirmed':'est.';
-    const rowClass = r.kind==='actual'?'is-actual':r.kind==='confirmed'?'is-confirmed':'is-projected';
-    const balClass = r.runningBal!==null ? (r.runningBal<th?'danger':r.runningBal<th*2?'warn':'ok') : 'ok';
-    const amtSign = r.type==='credit'?'+':'−';
-    return `${monthHeader}<div class="ledger-row ${rowClass}">
+  let lastMonth='';
+  document.getElementById('ledgerList').innerHTML = rows.map((r,i)=>{
+    const month=r.date.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const monthHeader = month!==lastMonth ? (lastMonth=month,`<div class="ledger-month-header">${month}</div>`) : '';
+    const badgeClass=r.kind==='actual'?'actual':r.kind==='confirmed'?'confirmed':'projected';
+    const badgeLabel=r.kind==='actual'?'actual':r.kind==='confirmed'?'locked':'est.';
+    const rowClass=r.kind==='actual'?'is-actual':r.kind==='confirmed'?'is-confirmed':'is-projected';
+    const balClass=r.runningBal<th?'danger':r.runningBal<th*2?'warn':'ok';
+    const sign=r.type==='credit'?'+':'−';
+    // store row data as escaped JSON on the element
+    const rowData = encodeURIComponent(JSON.stringify({
+      kind:r.kind, txId:r.txId, itemId:r.itemId, dateKey:r.dateKey,
+      mkey:r.mkey, name:r.name, type:r.type, amount:r.amount, date:r.date.toISOString().split('T')[0]
+    }));
+    return `${monthHeader}<div class="ledger-row ${rowClass}" style="cursor:pointer" onclick="openLedgerEdit('${rowData}')">
       <div class="ledger-left">
         <div class="ledger-name">${r.name}<span class="ledger-badge ${badgeClass}">${badgeLabel}</span></div>
         <div class="ledger-date">${fmtDateLong(r.date)}</div>
       </div>
-      <div class="ledger-amount ${r.type}">${amtSign}${fmtFull(r.amount)}</div>
-      <div class="ledger-balance ${balClass}">${r.runningBal!==null?fmtFull(r.runningBal):'—'}</div>
+      <div class="ledger-amount ${r.type}">${sign}${fmtFull(r.amount)}</div>
+      <div class="ledger-balance ${balClass}">${fmtFull(r.runningBal)}</div>
     </div>`;
   }).join('');
-  document.getElementById('ledgerList').innerHTML = html;
+}
+
+function openLedgerEdit(encoded) {
+  const r = JSON.parse(decodeURIComponent(encoded));
+  if(r.kind==='actual') {
+    // Full edit of a manual transaction
+    openSheet('Edit transaction', `
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input class="form-input" type="text" id="txName" value="${r.name}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <div class="type-btns">
+          <button class="type-btn${r.type==='debit'?' active debit':''}" id="btnDebit" onclick="setTypeBtn('debit')">Debit (out)</button>
+          <button class="type-btn${r.type==='credit'?' active credit':''}" id="btnCredit" onclick="setTypeBtn('credit')">Credit (in)</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Amount ($)</label>
+          <input class="form-input" type="number" id="txAmount" value="${r.amount}" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-input" type="date" id="txDate" value="${r.date}">
+        </div>
+      </div>
+      <button class="btn-save" onclick="saveEditedTx(${r.txId})">Save changes</button>
+      <button class="btn-danger-full" onclick="deleteTxFromLedger(${r.txId})">Delete transaction</button>
+    `);
+    sheetSelectedType = r.type;
+  } else {
+    // Projected or confirmed recurring occurrence
+    const dateLabel = fmtDateLong(new Date(r.date+'T00:00:00'));
+    const skipKey = 'skip_'+r.itemId+'_'+r.dateKey;
+    openSheet('Edit occurrence — '+r.name, `
+      <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">
+        ${dateLabel} · Currently <strong>${fmtFull(r.amount)}</strong>
+      </p>
+      <div class="form-group">
+        <label class="form-label">Override amount for this date ($)</label>
+        <input class="form-input" type="number" id="overrideAmt" value="${r.amount}" step="0.01" min="0" placeholder="${r.amount}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Move to a different date</label>
+        <input class="form-input" type="date" id="overrideDate" value="${r.date}">
+      </div>
+      <button class="btn-save" onclick="saveOccurrenceOverride('${r.itemId}','${r.dateKey}','${r.mkey}','${r.date}')">Save this occurrence</button>
+      <button class="btn-danger-full" onclick="skipOccurrence('${skipKey}')">Skip this occurrence</button>
+    `);
+  }
+}
+
+function saveEditedTx(id) {
+  const tx = transactions.find(t=>t.id==id);
+  if(!tx) return;
+  tx.name = document.getElementById('txName').value.trim()||tx.name;
+  tx.amount = parseFloat(document.getElementById('txAmount').value)||tx.amount;
+  tx.date = document.getElementById('txDate').value||tx.date;
+  tx.type = sheetSelectedType;
+  closeSheet(); renderAll(); scheduleSave();
+}
+
+function deleteTxFromLedger(id) {
+  if(!confirm('Delete this transaction?')) return;
+  transactions = transactions.filter(t=>t.id!=id);
+  closeSheet(); renderAll(); scheduleSave();
+}
+
+function saveOccurrenceOverride(itemId, dateKey, mkey, origDate) {
+  const amt = parseFloat(document.getElementById('overrideAmt').value);
+  const newDate = document.getElementById('overrideDate').value;
+  // If date changed, skip the original and add a manual transaction
+  if(newDate && newDate !== origDate) {
+    const skipKey = 'skip_'+itemId+'_'+dateKey;
+    overrides[skipKey] = 'skip';
+    const item = items.find(i=>i.id==itemId);
+    if(item) {
+      transactions.push({ id:nextTxId++, name:item.name+' (moved)', type:item.type,
+        amount: isNaN(amt)?item.amount:amt, date:newDate });
+    }
+  } else if(!isNaN(amt)) {
+    // Just override the amount for this month
+    overrides[mkey ? itemId+'_'+mkey : itemId+'_'+dateKey.slice(0,7)] = amt;
+    confirmedAmounts[mkey ? itemId+'_'+mkey : itemId+'_'+dateKey.slice(0,7)] = amt;
+  }
+  closeSheet(); renderAll(); scheduleSave();
+}
+
+function skipOccurrence(skipKey) {
+  overrides[skipKey] = 'skip';
+  closeSheet(); renderAll(); scheduleSave();
 }
 
 // ── Init ─────────────────────────────────────────────────────
