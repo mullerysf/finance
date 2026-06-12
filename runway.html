@@ -607,12 +607,25 @@ function renderChips(bal, minBal, th) {
   const deficit = monthlyIn - monthlyOut;
   const deficitCls = deficit < 0 ? 'danger' : deficit < 500 ? 'warn' : 'good';
 
+  // Days until balance hits danger threshold
+  const { projectedPoints, today } = buildProjection();
+  let daysToThreshold = null;
+  for(const p of projectedPoints) {
+    if(p.balance < th) {
+      daysToThreshold = Math.round((p.date - today) / (1000*60*60*24));
+      break;
+    }
+  }
+  const runwayCls = daysToThreshold === null ? 'good' : daysToThreshold < 30 ? 'danger' : daysToThreshold < 60 ? 'warn' : 'good';
+  const runwayVal = daysToThreshold === null ? '∞' : daysToThreshold + 'd';
+
   document.getElementById('metricChips').innerHTML = `
     <div class="chip"><div class="chip-label">True balance</div><div class="chip-value">${fmtFull(bal)}</div></div>
     <div class="chip"><div class="chip-label">Projected low</div><div class="chip-value ${cls}">${fmtFull(minBal)}</div></div>
     <div class="chip"><div class="chip-label">Monthly in</div><div class="chip-value good">${fmtFull(monthlyIn)}</div></div>
     <div class="chip"><div class="chip-label">Monthly out</div><div class="chip-value">${fmtFull(monthlyOut)}</div></div>
     <div class="chip"><div class="chip-label">Monthly net</div><div class="chip-value ${deficitCls}">${deficit>=0?'+':''}${fmtFull(deficit)}</div></div>
+    <div class="chip"><div class="chip-label">Days of runway</div><div class="chip-value ${runwayCls}">${runwayVal}</div></div>
   `;
 }
 
