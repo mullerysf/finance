@@ -590,12 +590,30 @@ function renderAll() {
 
 function renderChips(bal, minBal, th) {
   const cls = minBal<th?'danger':minBal<th*2?'warn':'good';
-  const monthlyOut = items.filter(i=>i.type==='debit'&&i.freq==='monthly').reduce((s,i)=>s+i.amount,0);
+
+  // Monthly out — sum of all monthly + quarterly (prorated) + weekly (x4.33) + biweekly (x2.17) debits
+  const monthlyOut =
+    items.filter(i=>i.type==='debit'&&i.freq==='monthly').reduce((s,i)=>s+i.amount,0) +
+    items.filter(i=>i.type==='debit'&&i.freq==='quarterly').reduce((s,i)=>s+i.amount/3,0) +
+    items.filter(i=>i.type==='debit'&&i.freq==='weekly').reduce((s,i)=>s+i.amount*4.33,0) +
+    items.filter(i=>i.type==='debit'&&i.freq==='biweekly').reduce((s,i)=>s+i.amount*2.17,0);
+
+  // Monthly in — same logic for credits
+  const monthlyIn =
+    items.filter(i=>i.type==='credit'&&i.freq==='monthly').reduce((s,i)=>s+i.amount,0) +
+    items.filter(i=>i.type==='credit'&&i.freq==='quarterly').reduce((s,i)=>s+i.amount/3,0) +
+    items.filter(i=>i.type==='credit'&&i.freq==='weekly').reduce((s,i)=>s+i.amount*4.33,0) +
+    items.filter(i=>i.type==='credit'&&i.freq==='biweekly').reduce((s,i)=>s+i.amount*2.17,0);
+
+  const deficit = monthlyIn - monthlyOut;
+  const deficitCls = deficit < 0 ? 'danger' : deficit < 500 ? 'warn' : 'good';
+
   document.getElementById('metricChips').innerHTML = `
     <div class="chip"><div class="chip-label">True balance</div><div class="chip-value">${fmtFull(bal)}</div></div>
     <div class="chip"><div class="chip-label">Projected low</div><div class="chip-value ${cls}">${fmtFull(minBal)}</div></div>
+    <div class="chip"><div class="chip-label">Monthly in</div><div class="chip-value good">${fmtFull(monthlyIn)}</div></div>
     <div class="chip"><div class="chip-label">Monthly out</div><div class="chip-value">${fmtFull(monthlyOut)}</div></div>
-    <div class="chip"><div class="chip-label">Actuals</div><div class="chip-value">${transactions.length}</div></div>
+    <div class="chip"><div class="chip-label">Monthly net</div><div class="chip-value ${deficitCls}">${deficit>=0?'+':''}${fmtFull(deficit)}</div></div>
   `;
 }
 
