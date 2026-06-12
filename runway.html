@@ -430,7 +430,7 @@ async function loadFromSheet() {
     if (!res.ok) throw new Error(res.error);
     const { items:si, settings, transactions:st, confirmedAmounts:sc } = res.data;
     items = (si && si.length>0) ? si : JSON.parse(JSON.stringify(DEFAULT_ITEMS));
-    transactions = st || [];
+    transactions = (st || []).map(t=>({...t, date: toYMD(t.date)})).filter(t=>t.date);
     confirmedAmounts = sc || {};
     overrides = res.data.overrides || {};
     nextItemId = items.length>0 ? Math.max(...items.map(i=>parseInt(i.id)||0))+1 : 100;
@@ -927,6 +927,33 @@ function setLedgerFilter(f, btn) {
   renderLedger();
 }
 
+// ── Date helpers ─────────────────────────────────────────────
+function toYMD(val) {
+  // Normalize any date value to YYYY-MM-DD string
+  if (!val) return '';
+  if (val instanceof Date) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth()+1).padStart(2,'0');
+    const d = String(val.getDate()).padStart(2,'0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(val).trim();
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Try parsing whatever Sheets returned
+  const parsed = new Date(s);
+  if (!isNaN(parsed)) return toYMD(parsed);
+  return '';
+}
+
+function parseLocalDate(ymd) {
+  // Parse YYYY-MM-DD as local time, not UTC
+  if (!ymd) return new Date(NaN);
+  const parts = ymd.split('-');
+  if (parts.length !== 3) return new Date(NaN);
+  return new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+}
+
 function buildLedgerRows() {
   const startBal = parseFloat(document.getElementById('settingBalance').value)||0;
   const today = new Date(); today.setHours(0,0,0,0);
@@ -935,10 +962,11 @@ function buildLedgerRows() {
 
   // Manual transactions
   transactions
-    .map(t=>({...t, dateObj:new Date(t.date+'T00:00:00')}))
+    .map(t=>({...t, ymd: toYMD(t.date), dateObj: parseLocalDate(toYMD(t.date))}))
+    .filter(t=>!isNaN(t.dateObj))
     .forEach(t=>{
       rows.push({ date:t.dateObj, name:t.name, type:t.type, amount:t.amount,
-        kind:'actual', txId:t.id, itemId:null, dateKey:null });
+        kind:'actual', txId:t.id, itemId:null, dateKey:null, dateStr:t.ymd });
     });
 
   // Recurring items — skip ones that are skipped, apply overrides
@@ -946,14 +974,15 @@ function buildLedgerRows() {
     generateDates(item, today, end).forEach(d=>{
       const mkey = fmtMonthKey(d);
       const ckey = item.id+'_'+mkey;
-      const skipKey = 'skip_'+item.id+'_'+d.toISOString().split('T')[0];
-      if(overrides[skipKey]==='skip') return; // skipped occurrence
+      const dStr = toYMD(d);
+      const skipKey = 'skip_'+item.id+'_'+dStr;
+      if(overrides[skipKey]==='skip') return;
       const overrideAmt = overrides[ckey] !== undefined ? overrides[ckey] : confirmedAmounts[ckey];
       const amt = overrideAmt !== undefined ? overrideAmt : item.amount;
       const isOverridden = overrideAmt !== undefined;
       rows.push({ date:d, name:item.name, type:item.type, amount:amt,
         kind: isOverridden ? 'confirmed' : 'projected',
-        txId:null, itemId:item.id, dateKey:d.toISOString().split('T')[0], mkey });
+        txId:null, itemId:item.id, dateKey:dStr, mkey, dateStr:dStr });
     });
   });
 
@@ -1009,6 +1038,7 @@ function openLedgerEdit(idx) {
   if(!r) return;
   if(r.kind==='actual') {
     // Full edit of a manual transaction
+    const dateVal = r.dateStr || toYMD(r.date);
     openSheet('Edit transaction', `
       <div class="form-group">
         <label class="form-label">Description</label>
@@ -1028,7 +1058,7 @@ function openLedgerEdit(idx) {
         </div>
         <div class="form-group">
           <label class="form-label">Date</label>
-          <input class="form-input" type="date" id="txDate" value="${r.date}">
+          <input class="form-input" type="date" id="txDate" value="${dateVal}">
         </div>
       </div>
       <button class="btn-save" onclick="saveEditedTx(${r.txId})">Save changes</button>
@@ -1037,7 +1067,8 @@ function openLedgerEdit(idx) {
     sheetSelectedType = r.type;
   } else {
     // Projected or confirmed recurring occurrence
-    const dateLabel = fmtDateLong(new Date(r.date+'T00:00:00'));
+    const dateVal = r.dateStr || toYMD(r.date);
+    const dateLabel = fmtDateLong(parseLocalDate(dateVal));
     const skipKey = 'skip_'+r.itemId+'_'+r.dateKey;
     openSheet('Edit occurrence — '+r.name, `
       <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">
@@ -1049,9 +1080,9 @@ function openLedgerEdit(idx) {
       </div>
       <div class="form-group">
         <label class="form-label">Move to a different date</label>
-        <input class="form-input" type="date" id="overrideDate" value="${r.date}">
+        <input class="form-input" type="date" id="overrideDate" value="${dateVal}">
       </div>
-      <button class="btn-save" onclick="saveOccurrenceOverride('${r.itemId}','${r.dateKey}','${r.mkey}','${r.date}')">Save this occurrence</button>
+      <button class="btn-save" onclick="saveOccurrenceOverride('${r.itemId}','${r.dateKey}','${r.mkey}','${dateVal}')">Save this occurrence</button>
       <button class="btn-danger-full" onclick="skipOccurrence('${skipKey}')">Skip this occurrence</button>
     `);
   }
@@ -1062,7 +1093,7 @@ function saveEditedTx(id) {
   if(!tx) return;
   tx.name = document.getElementById('txName').value.trim()||tx.name;
   tx.amount = parseFloat(document.getElementById('txAmount').value)||tx.amount;
-  tx.date = document.getElementById('txDate').value||tx.date;
+  tx.date = toYMD(document.getElementById('txDate').value)||tx.date;
   tx.type = sheetSelectedType;
   closeSheet(); renderAll(); scheduleSave();
 }
@@ -1075,20 +1106,21 @@ function deleteTxFromLedger(id) {
 
 function saveOccurrenceOverride(itemId, dateKey, mkey, origDate) {
   const amt = parseFloat(document.getElementById('overrideAmt').value);
-  const newDate = document.getElementById('overrideDate').value;
-  // If date changed, skip the original and add a manual transaction
+  const newDate = toYMD(document.getElementById('overrideDate').value);
   if(newDate && newDate !== origDate) {
+    // Date changed — skip original, add as manual transaction
     const skipKey = 'skip_'+itemId+'_'+dateKey;
     overrides[skipKey] = 'skip';
     const item = items.find(i=>i.id==itemId);
     if(item) {
       transactions.push({ id:nextTxId++, name:item.name+' (moved)', type:item.type,
-        amount: isNaN(amt)?item.amount:amt, date:newDate });
+        amount: isNaN(amt) ? item.amount : amt, date: newDate });
     }
   } else if(!isNaN(amt)) {
-    // Just override the amount for this month
-    overrides[mkey ? itemId+'_'+mkey : itemId+'_'+dateKey.slice(0,7)] = amt;
-    confirmedAmounts[mkey ? itemId+'_'+mkey : itemId+'_'+dateKey.slice(0,7)] = amt;
+    // Amount override only
+    const key = (mkey ? itemId+'_'+mkey : itemId+'_'+dateKey.slice(0,7));
+    overrides[key] = amt;
+    confirmedAmounts[key] = amt;
   }
   closeSheet(); renderAll(); scheduleSave();
 }
