@@ -639,7 +639,7 @@ function renderTroughs() {
   const th = parseFloat(document.getElementById('settingThreshold').value)||1000;
   const byMonth={};
   projectedPoints.forEach(p=>{ const k=fmtMonthKey(p.date); if(!byMonth[k]||p.balance<byMonth[k].balance)byMonth[k]=p; });
-  const troughs=Object.values(byMonth).sort((a,b)=>a.balance-b.balance).slice(0,10);
+  const troughs=Object.values(byMonth).sort((a,b)=>a.date-b.date).slice(0,10);
   document.getElementById('troughContainer').innerHTML = troughs.length===0
     ? '<div class="empty-state">No data yet</div>'
     : troughs.map(t=>{ const c=t.balance<th?'danger':t.balance<th*2?'warn':'good'; return `<div class="trough-item ${c}"><span class="trough-date">${fmtDateLong(t.date)}</span><span class="trough-val">${fmtFull(t.balance)}</span></div>`; }).join('');
