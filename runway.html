@@ -981,6 +981,9 @@ function renderLedger() {
 
   if(!rows.length){ document.getElementById('ledgerList').innerHTML='<div class="empty-state">No entries match this filter</div>'; return; }
 
+  // Store rows in a module-level cache so onclick can reference by index — avoids iOS encoding issues
+  window._ledgerRows = rows;
+
   let lastMonth='';
   document.getElementById('ledgerList').innerHTML = rows.map((r,i)=>{
     const month=r.date.toLocaleDateString('en-US',{month:'long',year:'numeric'});
@@ -990,12 +993,7 @@ function renderLedger() {
     const rowClass=r.kind==='actual'?'is-actual':r.kind==='confirmed'?'is-confirmed':'is-projected';
     const balClass=r.runningBal<th?'danger':r.runningBal<th*2?'warn':'ok';
     const sign=r.type==='credit'?'+':'−';
-    // store row data as escaped JSON on the element
-    const rowData = encodeURIComponent(JSON.stringify({
-      kind:r.kind, txId:r.txId, itemId:r.itemId, dateKey:r.dateKey,
-      mkey:r.mkey, name:r.name, type:r.type, amount:r.amount, date:r.date.toISOString().split('T')[0]
-    }));
-    return `${monthHeader}<div class="ledger-row ${rowClass}" style="cursor:pointer" onclick="openLedgerEdit('${rowData}')">
+    return `${monthHeader}<div class="ledger-row ${rowClass}" style="cursor:pointer" onclick="openLedgerEdit(${i})">
       <div class="ledger-left">
         <div class="ledger-name">${r.name}<span class="ledger-badge ${badgeClass}">${badgeLabel}</span></div>
         <div class="ledger-date">${fmtDateLong(r.date)}</div>
@@ -1006,8 +1004,9 @@ function renderLedger() {
   }).join('');
 }
 
-function openLedgerEdit(encoded) {
-  const r = JSON.parse(decodeURIComponent(encoded));
+function openLedgerEdit(idx) {
+  const r = window._ledgerRows[idx];
+  if(!r) return;
   if(r.kind==='actual') {
     // Full edit of a manual transaction
     openSheet('Edit transaction', `
