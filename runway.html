@@ -360,6 +360,7 @@ function fmtMonthKey(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padS
 function freqLabel(item) {
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   if (item.freq==='monthly') return 'Monthly · day '+item.day;
+  if (item.freq==='quarterly') return 'Quarterly · day '+item.day;
   if (item.freq==='biweekly') return 'Bi-weekly · '+days[item.day%7];
   if (item.freq==='weekly') return 'Weekly · '+days[item.day%7];
   return 'One-time';
@@ -436,6 +437,9 @@ function generateDates(item, start, end) {
   if (item.freq==='monthly') {
     const d=new Date(start.getFullYear(),start.getMonth(),1);
     while(d<=end){ const t=new Date(d.getFullYear(),d.getMonth(),Math.min(item.day,28)); if(t>=start&&t<=end)dates.push(new Date(t)); d.setMonth(d.getMonth()+1); }
+  } else if(item.freq==='quarterly') {
+    const d=new Date(start.getFullYear(),start.getMonth(),1);
+    while(d<=end){ const t=new Date(d.getFullYear(),d.getMonth(),Math.min(item.day,28)); if(t>=start&&t<=end)dates.push(new Date(t)); d.setMonth(d.getMonth()+3); }
   } else if(item.freq==='biweekly') {
     const cur=new Date(start); const tgt=parseInt(item.day)%7;
     while(cur.getDay()!==tgt)cur.setDate(cur.getDate()+1);
@@ -755,7 +759,7 @@ function openEditItemSheet(id) {
   sheetSelectedType = item.type;
 }
 function itemFormHTML(item) {
-  const dayLabel = (!item||item.freq==='monthly'||item.freq==='once') ? 'Day of month' : 'Day (0=Sun)';
+  const dayLabel = (!item||item.freq==='monthly'||item.freq==='quarterly'||item.freq==='once') ? 'Day of month' : 'Day (0=Sun)';
   return `
     <input type="hidden" id="editItemId" value="${item?item.id:''}">
     <div class="form-group">
@@ -784,6 +788,7 @@ function itemFormHTML(item) {
         <label class="form-label">Frequency</label>
         <select class="form-input" id="itemFreq" onchange="updateDayLbl()">
           <option value="monthly"${!item||item.freq==='monthly'?' selected':''}>Monthly</option>
+          <option value="quarterly"${item&&item.freq==='quarterly'?' selected':''}>Quarterly</option>
           <option value="biweekly"${item&&item.freq==='biweekly'?' selected':''}>Bi-weekly</option>
           <option value="weekly"${item&&item.freq==='weekly'?' selected':''}>Weekly</option>
           <option value="once"${item&&item.freq==='once'?' selected':''}>One-time</option>
@@ -800,7 +805,7 @@ function itemFormHTML(item) {
 }
 function updateDayLbl() {
   const f = document.getElementById('itemFreq').value;
-  document.getElementById('dayLbl').textContent = (f==='monthly'||f==='once')?'Day of month':'Day (0=Sun)';
+  document.getElementById('dayLbl').textContent = (f==='monthly'||f==='quarterly'||f==='once')?'Day of month':'Day (0=Sun)';
 }
 function saveItem() {
   const name = document.getElementById('itemName').value.trim();
