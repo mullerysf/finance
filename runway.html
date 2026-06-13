@@ -319,8 +319,12 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
   <div class="settings-section">
     <div class="settings-card">
       <div class="setting-row">
-        <div class="setting-label">Starting balance<small>Your balance before any actuals entered here</small></div>
+        <div class="setting-label">Starting balance<small>One-time setup — your balance on the date below</small></div>
         <input class="setting-input" type="number" id="settingBalance" value="0" step="0.01" onchange="onSettingChange()">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">As of date<small>Date your starting balance was accurate</small></div>
+        <input class="setting-input" type="date" id="settingStartDate" style="width:150px;font-size:13px" onchange="onSettingChange()">
       </div>
       <div class="setting-row">
         <div class="setting-label">Danger threshold<small>Alert when projected balance falls below</small></div>
@@ -436,6 +440,7 @@ async function loadFromSheet() {
     nextTxId = transactions.length>0 ? Math.max(...transactions.map(t=>parseInt(t.id)||0))+1 : 1000;
     if (settings) {
       if (settings.balance) document.getElementById('settingBalance').value = settings.balance;
+      if (settings.startDate) document.getElementById('settingStartDate').value = settings.startDate;
       if (settings.threshold) document.getElementById('settingThreshold').value = settings.threshold;
       if (settings.horizon) { horizon=parseInt(settings.horizon); document.getElementById('settingHorizon').value=settings.horizon; }
     }
@@ -461,6 +466,7 @@ async function saveAll() {
   try {
     const settings = {
       balance: document.getElementById('settingBalance').value,
+      startDate: document.getElementById('settingStartDate').value,
       threshold: document.getElementById('settingThreshold').value,
       horizon
     };
@@ -505,71 +511,59 @@ function generateDates(item, start, end) {
 
 function buildProjection() {
   const startBal = parseFloat(document.getElementById('settingBalance').value)||0;
+  const startDate = getStartDate();
   const today = new Date(); today.setHours(0,0,0,0);
   const end = new Date(today); end.setDate(end.getDate()+horizon);
 
-  // Apply all past & today's manual transactions to get true current balance
-  const txActual = transactions
-    .map(t=>({...t, dateObj: new Date(t.date+'T00:00:00')}))
-    .sort((a,b)=>a.dateObj-b.dateObj);
+  // True current balance = starting balance + all transactions to date
+  const currentBalance = computeTrueBalance();
 
-  let runningBal = startBal;
-  txActual.forEach(t => {
-    if(t.dateObj <= today) runningBal += (t.type==='credit' ? t.amount : -t.amount);
-  });
+  // Build confirmed/projected points from today forward
+  const confirmedPoints = [{date:new Date(today), balance:currentBalance, confirmed:true}];
+  const projectedPoints = [{date:new Date(today), balance:currentBalance, confirmed:true}];
 
-  // Build future events
   const events = [];
 
   // Future manual transactions
-  txActual.forEach(t => {
-    if(t.dateObj > today) events.push({date:t.dateObj, amount:(t.type==='credit'?t.amount:-t.amount), confirmed:true, label:t.name});
-  });
+  transactions
+    .map(t=>({...t, dateObj: parseLocalDate(toYMD(t.date))}))
+    .filter(t=>!isNaN(t.dateObj) && t.dateObj > today)
+    .forEach(t=>{ events.push({date:t.dateObj, amount:(t.type==='credit'?t.amount:-t.amount), confirmed:true}); });
 
   // Recurring items
-  items.forEach(item => {
-    generateDates(item, today, end).forEach(d => {
+  items.forEach(item=>{
+    generateDates(item, today, end).forEach(d=>{
       const mkey = fmtMonthKey(d);
       const ckey = item.id+'_'+mkey;
-      const confirmedAmt = confirmedAmounts[ckey];
-      const amt = confirmedAmt !== undefined ? confirmedAmt : item.amount;
-      const isConfirmed = confirmedAmt !== undefined;
-      events.push({
-        date: d,
-        amount: item.type==='credit' ? amt : -amt,
-        confirmed: isConfirmed,
-        label: item.name
-      });
+      const dStr = toYMD(d);
+      const skipKey = 'skip_'+item.id+'_'+dStr;
+      if(overrides[skipKey]==='skip') return;
+      const overrideAmt = overrides[ckey] !== undefined ? overrides[ckey] : confirmedAmounts[ckey];
+      const amt = overrideAmt !== undefined ? overrideAmt : item.amount;
+      const isConfirmed = overrideAmt !== undefined;
+      events.push({ date:d, amount:(item.type==='credit'?amt:-amt), confirmed:isConfirmed });
     });
   });
 
   events.sort((a,b)=>a.date-b.date);
 
-  // Build point series — split into confirmed and projected segments
-  const confirmedPoints = [{date:new Date(today), balance:runningBal, confirmed:true}];
-  const projectedPoints = [{date:new Date(today), balance:runningBal, confirmed:true}];
-
-  let bal = runningBal;
-  let lastConfirmedBal = runningBal;
+  let bal = currentBalance;
   let hitProjected = false;
-
-  events.forEach(ev => {
+  events.forEach(ev=>{
     bal += ev.amount;
     if(ev.confirmed && !hitProjected) {
       confirmedPoints.push({date:new Date(ev.date), balance:bal});
-      lastConfirmedBal = bal;
-    } else {
-      hitProjected = true;
-    }
+    } else { hitProjected = true; }
     projectedPoints.push({date:new Date(ev.date), balance:bal});
   });
 
-  return { confirmedPoints, projectedPoints, currentBalance: runningBal, today };
+  return { confirmedPoints, projectedPoints, currentBalance, today, startDate };
 }
 
 // ── Render all ───────────────────────────────────────────────
 function renderAll() {
-  const { currentBalance, projectedPoints, today } = buildProjection();
+  const { projectedPoints, today } = buildProjection();
+  const currentBalance = computeTrueBalance();
   const th = parseFloat(document.getElementById('settingThreshold').value)||1000;
   const minBal = Math.min(...projectedPoints.map(p=>p.balance));
   const cls = minBal<th?'danger':minBal<th*2?'warn':'good';
@@ -984,22 +978,40 @@ function parseLocalDate(ymd) {
   return new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
 }
 
+function getStartDate() {
+  const val = document.getElementById('settingStartDate').value;
+  return val ? parseLocalDate(val) : new Date();
+}
+
+function computeTrueBalance() {
+  const startBal = parseFloat(document.getElementById('settingBalance').value)||0;
+  const startDate = getStartDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  // Apply all transactions from startDate up to and including today
+  let bal = startBal;
+  transactions
+    .map(t=>({...t, dateObj: parseLocalDate(toYMD(t.date))}))
+    .filter(t=>!isNaN(t.dateObj) && t.dateObj >= startDate && t.dateObj <= today)
+    .forEach(t=>{ bal += t.type==='credit' ? t.amount : -t.amount; });
+  return bal;
+}
 function buildLedgerRows() {
   const startBal = parseFloat(document.getElementById('settingBalance').value)||0;
+  const startDate = getStartDate();
   const today = new Date(); today.setHours(0,0,0,0);
   const end = new Date(today); end.setDate(end.getDate()+horizon);
   const rows = [];
 
-  // Manual transactions
+  // All manual transactions — past (actuals) and future
   transactions
-    .map(t=>({...t, ymd: toYMD(t.date), dateObj: parseLocalDate(toYMD(t.date))}))
+    .map(t=>({...t, ymd:toYMD(t.date), dateObj:parseLocalDate(toYMD(t.date))}))
     .filter(t=>!isNaN(t.dateObj))
     .forEach(t=>{
       rows.push({ date:t.dateObj, name:t.name, type:t.type, amount:t.amount,
         kind:'actual', txId:t.id, itemId:null, dateKey:null, dateStr:t.ymd });
     });
 
-  // Recurring items — skip ones that are skipped, apply overrides
+  // Future recurring items
   items.forEach(item=>{
     generateDates(item, today, end).forEach(d=>{
       const mkey = fmtMonthKey(d);
@@ -1007,27 +1019,20 @@ function buildLedgerRows() {
       const dStr = toYMD(d);
       const skipKey = 'skip_'+item.id+'_'+dStr;
       if(overrides[skipKey]==='skip') return;
-      const overrideAmt = overrides[ckey] !== undefined ? overrides[ckey] : confirmedAmounts[ckey];
-      const amt = overrideAmt !== undefined ? overrideAmt : item.amount;
-      const isOverridden = overrideAmt !== undefined;
+      const overrideAmt = overrides[ckey]!==undefined ? overrides[ckey] : confirmedAmounts[ckey];
+      const amt = overrideAmt!==undefined ? overrideAmt : item.amount;
       rows.push({ date:d, name:item.name, type:item.type, amount:amt,
-        kind: isOverridden ? 'confirmed' : 'projected',
+        kind: overrideAmt!==undefined?'confirmed':'projected',
         txId:null, itemId:item.id, dateKey:dStr, mkey, dateStr:dStr });
     });
   });
 
   rows.sort((a,b)=>a.date-b.date);
 
-  // Running balance — past actuals first
-  let pastBal = startBal;
-  const past = rows.filter(r=>r.kind==='actual'&&r.date<=today);
-  past.forEach(r=>{ pastBal+=(r.type==='credit'?r.amount:-r.amount); r.runningBal=pastBal; });
-
-  let futureBal = pastBal;
-  const future = rows.filter(r=>!(r.kind==='actual'&&r.date<=today));
-  future.forEach(r=>{ futureBal+=(r.type==='credit'?r.amount:-r.amount); r.runningBal=futureBal; });
-
-  return [...past,...future].sort((a,b)=>a.date-b.date);
+  // Walk forward from startBal, computing running balance on every row
+  let bal = startBal;
+  rows.forEach(r=>{ bal+=r.type==='credit'?r.amount:-r.amount; r.runningBal=bal; });
+  return rows;
 }
 
 function renderLedger() {
