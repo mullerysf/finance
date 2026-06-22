@@ -448,10 +448,13 @@ async function loadFromSheet() {
     document.getElementById('syncStatus').style.color='var(--green)';
   } catch(e) {
     items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
-    transactions = []; confirmedAmounts = {};
+    transactions = []; confirmedAmounts = {}; overrides = {};
     nextItemId=20; nextTxId=1000;
     document.getElementById('syncStatus').innerHTML='● Offline — changes saved locally';
     document.getElementById('syncStatus').style.color='var(--amber)';
+  }
+  if(!document.getElementById('settingStartDate').value) {
+    document.getElementById('settingStartDate').value = toYMD(new Date());
   }
   renderAll();
 }
