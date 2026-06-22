@@ -537,13 +537,15 @@ function buildProjection() {
   items.forEach(item=>{
     generateDates(item, today, end).forEach(d=>{
       const mkey = fmtMonthKey(d);
-      const ckey = item.id+'_'+mkey;
       const dStr = toYMD(d);
       const skipKey = 'skip_'+item.id+'_'+dStr;
       if(overrides[skipKey]==='skip') return;
-      const overrideAmt = overrides[ckey] !== undefined ? overrides[ckey] : confirmedAmounts[ckey];
-      const amt = overrideAmt !== undefined ? overrideAmt : item.amount;
-      const isConfirmed = overrideAmt !== undefined;
+      // For biweekly/weekly check date key first, then month key
+      const usesDates = item.freq==='biweekly'||item.freq==='weekly';
+      const lookupKey = usesDates ? item.id+'_'+dStr : item.id+'_'+mkey;
+      const overrideAmt = overrides[lookupKey]!==undefined ? overrides[lookupKey] : confirmedAmounts[lookupKey];
+      const amt = overrideAmt!==undefined ? overrideAmt : item.amount;
+      const isConfirmed = overrideAmt!==undefined;
       events.push({ date:d, amount:(item.type==='credit'?amt:-amt), confirmed:isConfirmed });
     });
   });
@@ -696,15 +698,22 @@ function renderRecurring() {
   document.getElementById('recurringList').innerHTML = sorted.length===0
     ? '<div class="empty-state">No recurring items</div>'
     : sorted.map(item=>{
-        // Find any confirmed months for this item
+        // Find confirmed entries for this item — both date-keyed and month-keyed
         const confirmed = Object.entries(confirmedAmounts)
           .filter(([k])=>k.startsWith(item.id+'_'))
           .sort((a,b)=>b[0].localeCompare(a[0]))
           .slice(0,3);
         const confirmedRows = confirmed.map(([k,amt])=>{
-          const month = k.split('_')[1];
-          const d = new Date(month+'-01T00:00:00');
-          const label = d.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+          const keyPart = k.split('_').slice(1).join('_');
+          let label;
+          if(keyPart.length===10) {
+            // YYYY-MM-DD — specific date
+            label = fmtDateLong(parseLocalDate(keyPart));
+          } else {
+            // YYYY-MM — month
+            const d = parseLocalDate(keyPart+'-01');
+            label = d.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+          }
           return `<div class="confirmed-row">
             <span class="confirmed-month">${label}</span>
             <div class="confirmed-right">
@@ -912,31 +921,101 @@ function deleteItem(id) {
 function openConfirmSheet(itemId) {
   const item = items.find(i=>i.id==itemId);
   if(!item) return;
-  const now = new Date();
-  const thisMonth = fmtMonthKey(now);
-  const nextMonth = fmtMonthKey(new Date(now.getFullYear(), now.getMonth()+1, 1));
-  const monthLabel = (m) => { const d=new Date(m+'-01T00:00:00'); return d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); };
-  openSheet('Lock in actual — '+item.name, `
-    <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">Replace the estimated amount with the real number for a specific month. The projection will use this exact figure.</p>
-    <div class="form-group">
-      <label class="form-label">Month</label>
-      <select class="form-input" id="confirmMonth">
-        <option value="${thisMonth}">${monthLabel(thisMonth)} (this month)</option>
-        <option value="${nextMonth}">${monthLabel(nextMonth)} (next month)</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Actual amount ($)</label>
-      <input class="form-input" type="number" id="confirmAmt" placeholder="${item.amount.toFixed(2)}" step="0.01" min="0">
-    </div>
-    <button class="btn-save" onclick="saveConfirmed(${itemId})">Lock in amount</button>
-  `);
-  setTimeout(()=>document.getElementById('confirmAmt').focus(),350);
+
+  const usesDates = item.freq==='biweekly' || item.freq==='weekly';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const lookAhead = new Date(today); lookAhead.setDate(lookAhead.getDate()+60);
+
+  if(usesDates) {
+    // Show next 6 occurrence dates as options
+    const dates = generateDates(item, today, lookAhead);
+    const options = dates.slice(0,6).map(d=>{
+      const ymd = toYMD(d);
+      const label = fmtDateLong(d);
+      const ckey = itemId+'_'+ymd;
+      const existing = confirmedAmounts[ckey];
+      return `<option value="${ymd}">${label}${existing!==undefined?' · locked: '+fmtFull(existing):''}</option>`;
+    }).join('');
+
+    // Show recent locked occurrences
+    const locked = Object.entries(confirmedAmounts)
+      .filter(([k])=>k.startsWith(itemId+'_')&&k.split('_')[1].length===10) // date keys are YYYY-MM-DD (10 chars)
+      .sort((a,b)=>b[0].localeCompare(a[0])).slice(0,4);
+    const lockedRows = locked.map(([k,amt])=>{
+      const dStr = k.split('_').slice(1).join('_');
+      const label = fmtDateLong(parseLocalDate(dStr));
+      return `<div class="confirmed-row"><span class="confirmed-month">${label}</span>
+        <div class="confirmed-right"><span class="confirmed-amt">${fmtFull(amt)}</span>
+        <span class="confirmed-clear" onclick="clearConfirmed('${k}')">✕</span></div></div>`;
+    }).join('');
+
+    openSheet('Lock in actual — '+item.name, `
+      <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">Lock in the real amount for a specific pay date.</p>
+      <div class="form-group">
+        <label class="form-label">Occurrence date</label>
+        <select class="form-input" id="confirmKey">${options}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Actual amount ($)</label>
+        <input class="form-input" type="number" id="confirmAmt" placeholder="${item.amount.toFixed(2)}" step="0.01" min="0">
+      </div>
+      <button class="btn-save" onclick="saveConfirmedDate(${itemId})">Lock in amount</button>
+      ${locked.length>0?`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--gray-100)"><div style="font-size:11px;font-weight:600;color:var(--gray-400);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Previously locked</div>${lockedRows}</div>`:''}
+    `);
+  } else {
+    // Monthly / quarterly — show by month
+    const now = new Date();
+    const months = [];
+    for(let i=0; i<4; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth()+i, 1);
+      const key = fmtMonthKey(d);
+      const label = d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+      const existing = confirmedAmounts[itemId+'_'+key];
+      months.push(`<option value="${key}">${label}${existing!==undefined?' · locked: '+fmtFull(existing):''}</option>`);
+    }
+    const locked = Object.entries(confirmedAmounts)
+      .filter(([k])=>k.startsWith(itemId+'_')&&k.split('_')[1].length===7) // month keys are YYYY-MM (7 chars)
+      .sort((a,b)=>b[0].localeCompare(a[0])).slice(0,4);
+    const lockedRows = locked.map(([k,amt])=>{
+      const mStr = k.split('_').slice(1).join('_');
+      const d = parseLocalDate(mStr+'-01');
+      const label = d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+      return `<div class="confirmed-row"><span class="confirmed-month">${label}</span>
+        <div class="confirmed-right"><span class="confirmed-amt">${fmtFull(amt)}</span>
+        <span class="confirmed-clear" onclick="clearConfirmed('${k}')">✕</span></div></div>`;
+    }).join('');
+
+    openSheet('Lock in actual — '+item.name, `
+      <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">Replace the estimated amount with the real number for a specific month.</p>
+      <div class="form-group">
+        <label class="form-label">Month</label>
+        <select class="form-input" id="confirmKey">${months.join('')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Actual amount ($)</label>
+        <input class="form-input" type="number" id="confirmAmt" placeholder="${item.amount.toFixed(2)}" step="0.01" min="0">
+      </div>
+      <button class="btn-save" onclick="saveConfirmedMonth(${itemId})">Lock in amount</button>
+      ${locked.length>0?`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--gray-100)"><div style="font-size:11px;font-weight:600;color:var(--gray-400);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Previously locked</div>${lockedRows}</div>`:''}
+    `);
+  }
+  setTimeout(()=>{ const el=document.getElementById('confirmAmt'); if(el) el.focus(); },350);
 }
-function saveConfirmed(itemId) {
-  const month = document.getElementById('confirmMonth').value;
+
+function saveConfirmedDate(itemId) {
+  // Lock by specific date (for weekly/biweekly)
+  const dateKey = document.getElementById('confirmKey').value;
   const amt = parseFloat(document.getElementById('confirmAmt').value);
-  if(isNaN(amt)) return;
+  if(isNaN(amt)||!dateKey) return;
+  confirmedAmounts[itemId+'_'+dateKey] = amt;
+  closeSheet(); renderAll(); scheduleSave();
+}
+
+function saveConfirmedMonth(itemId) {
+  // Lock by month (for monthly/quarterly)
+  const month = document.getElementById('confirmKey').value;
+  const amt = parseFloat(document.getElementById('confirmAmt').value);
+  if(isNaN(amt)||!month) return;
   confirmedAmounts[itemId+'_'+month] = amt;
   closeSheet(); renderAll(); scheduleSave();
 }
@@ -1018,11 +1097,12 @@ function buildLedgerRows() {
   items.forEach(item=>{
     generateDates(item, today, end).forEach(d=>{
       const mkey = fmtMonthKey(d);
-      const ckey = item.id+'_'+mkey;
       const dStr = toYMD(d);
       const skipKey = 'skip_'+item.id+'_'+dStr;
       if(overrides[skipKey]==='skip') return;
-      const overrideAmt = overrides[ckey]!==undefined ? overrides[ckey] : confirmedAmounts[ckey];
+      const usesDates = item.freq==='biweekly'||item.freq==='weekly';
+      const lookupKey = usesDates ? item.id+'_'+dStr : item.id+'_'+mkey;
+      const overrideAmt = overrides[lookupKey]!==undefined ? overrides[lookupKey] : confirmedAmounts[lookupKey];
       const amt = overrideAmt!==undefined ? overrideAmt : item.amount;
       rows.push({ date:d, name:item.name, type:item.type, amount:amt,
         kind: overrideAmt!==undefined?'confirmed':'projected',
