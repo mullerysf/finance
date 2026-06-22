@@ -498,13 +498,35 @@ function generateDates(item, start, end) {
     const d=new Date(start.getFullYear(),start.getMonth(),1);
     while(d<=end){ const t=new Date(d.getFullYear(),d.getMonth(),Math.min(item.day,28)); if(t>=start&&t<=end)dates.push(new Date(t)); d.setMonth(d.getMonth()+3); }
   } else if(item.freq==='biweekly') {
-    const cur=new Date(start); const tgt=parseInt(item.day)%7;
-    while(cur.getDay()!==tgt)cur.setDate(cur.getDate()+1);
-    while(cur<=end){dates.push(new Date(cur));cur.setDate(cur.getDate()+14);}
+    // Use anchorDate if set — walk forward/backward in 14-day steps from it
+    // Otherwise fall back to day-of-week guess
+    let cur;
+    if(item.anchorDate) {
+      cur = parseLocalDate(item.anchorDate);
+      // Walk anchor forward until we're at or past start
+      while(cur < start) cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+14);
+      // Walk back one step in case we overshot
+      const prev = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()-14);
+      if(prev >= start) cur = prev;
+    } else {
+      cur = new Date(start);
+      const tgt = parseInt(item.day)%7;
+      while(cur.getDay()!==tgt) cur.setDate(cur.getDate()+1);
+    }
+    while(cur<=end){ if(cur>=start) dates.push(new Date(cur)); cur=new Date(cur.getFullYear(),cur.getMonth(),cur.getDate()+14); }
   } else if(item.freq==='weekly') {
-    const cur=new Date(start); const tgt=parseInt(item.day)%7;
-    while(cur.getDay()!==tgt)cur.setDate(cur.getDate()+1);
-    while(cur<=end){dates.push(new Date(cur));cur.setDate(cur.getDate()+7);}
+    let cur;
+    if(item.anchorDate) {
+      cur = parseLocalDate(item.anchorDate);
+      while(cur < start) cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+7);
+      const prev = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()-7);
+      if(prev >= start) cur = prev;
+    } else {
+      cur = new Date(start);
+      const tgt = parseInt(item.day)%7;
+      while(cur.getDay()!==tgt) cur.setDate(cur.getDate()+1);
+    }
+    while(cur<=end){ if(cur>=start) dates.push(new Date(cur)); cur=new Date(cur.getFullYear(),cur.getMonth(),cur.getDate()+7); }
   } else if(item.freq==='once'){
     const t=new Date(start);t.setDate(item.day);
     if(t>=start&&t<=end)dates.push(t);
@@ -846,12 +868,14 @@ function openEditItemSheet(id) {
   sheetSelectedType = item.type;
 }
 function itemFormHTML(item) {
-  const dayLabel = (!item||item.freq==='monthly'||item.freq==='quarterly'||item.freq==='once') ? 'Day of month' : 'Day (0=Sun)';
+  const isDateBased = item && (item.freq==='biweekly'||item.freq==='weekly');
+  const dayLabel = (!item||item.freq==='monthly'||item.freq==='quarterly'||item.freq==='once') ? 'Day of month' : 'Day (0=Sun, fallback)';
+  const anchorVal = item && item.anchorDate ? item.anchorDate : toYMD(new Date());
   return `
     <input type="hidden" id="editItemId" value="${item?item.id:''}">
     <div class="form-group">
       <label class="form-label">Description</label>
-      <input class="form-input" type="text" id="itemName" placeholder="e.g. Mortgage" value="${item?item.name:''}">
+      <input class="form-input" type="text" id="itemName" placeholder="e.g. Paycheck" value="${item?item.name:''}">
     </div>
     <div class="form-group">
       <label class="form-label">Type</label>
@@ -870,21 +894,24 @@ function itemFormHTML(item) {
         <input class="form-input" type="number" id="itemVariance" placeholder="0" step="50" min="0" value="${item?item.variance:0}">
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Frequency</label>
-        <select class="form-input" id="itemFreq" onchange="updateDayLbl()">
-          <option value="monthly"${!item||item.freq==='monthly'?' selected':''}>Monthly</option>
-          <option value="quarterly"${item&&item.freq==='quarterly'?' selected':''}>Quarterly</option>
-          <option value="biweekly"${item&&item.freq==='biweekly'?' selected':''}>Bi-weekly</option>
-          <option value="weekly"${item&&item.freq==='weekly'?' selected':''}>Weekly</option>
-          <option value="once"${item&&item.freq==='once'?' selected':''}>One-time</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label" id="dayLbl">${dayLabel}</label>
-        <input class="form-input" type="number" id="itemDay" min="0" max="31" step="1" value="${item?item.day:1}">
-      </div>
+    <div class="form-group">
+      <label class="form-label">Frequency</label>
+      <select class="form-input" id="itemFreq" onchange="updateDayLbl()">
+        <option value="monthly"${!item||item.freq==='monthly'?' selected':''}>Monthly</option>
+        <option value="quarterly"${item&&item.freq==='quarterly'?' selected':''}>Quarterly</option>
+        <option value="biweekly"${item&&item.freq==='biweekly'?' selected':''}>Bi-weekly</option>
+        <option value="weekly"${item&&item.freq==='weekly'?' selected':''}>Weekly</option>
+        <option value="once"${item&&item.freq==='once'?' selected':''}>One-time</option>
+      </select>
+    </div>
+    <div id="anchorDateGroup" class="form-group" style="display:${isDateBased?'block':'none'}">
+      <label class="form-label">Known occurrence date <span style="font-weight:400;color:var(--gray-400)">(pins the schedule)</span></label>
+      <input class="form-input" type="date" id="itemAnchorDate" value="${anchorVal}">
+      <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Enter any date this item actually occurs — the schedule will repeat every ${item&&item.freq==='weekly'?'7':'14'} days from it.</div>
+    </div>
+    <div id="dayGroup" class="form-group" style="display:${isDateBased?'none':'block'}">
+      <label class="form-label" id="dayLbl">${dayLabel}</label>
+      <input class="form-input" type="number" id="itemDay" min="0" max="31" step="1" value="${item?item.day:1}">
     </div>
     <button class="btn-save" onclick="saveItem()">Save item</button>
     ${item?`<button class="btn-danger-full" onclick="deleteItem(${item.id})">Delete item</button>`:''}
@@ -892,7 +919,17 @@ function itemFormHTML(item) {
 }
 function updateDayLbl() {
   const f = document.getElementById('itemFreq').value;
-  document.getElementById('dayLbl').textContent = (f==='monthly'||f==='quarterly'||f==='once')?'Day of month':'Day (0=Sun)';
+  const isDateBased = f==='biweekly'||f==='weekly';
+  document.getElementById('anchorDateGroup').style.display = isDateBased?'block':'none';
+  document.getElementById('dayGroup').style.display = isDateBased?'none':'block';
+  if(!isDateBased) {
+    document.getElementById('dayLbl').textContent = (f==='monthly'||f==='quarterly'||f==='once')?'Day of month':'Day (0=Sun)';
+  }
+  // Update the interval hint text
+  if(isDateBased) {
+    const hint = document.querySelector('#anchorDateGroup div');
+    if(hint) hint.textContent = `Enter any date this item actually occurs — the schedule will repeat every ${f==='weekly'?'7':'14'} days from it.`;
+  }
 }
 function saveItem() {
   const name = document.getElementById('itemName').value.trim();
@@ -901,12 +938,14 @@ function saveItem() {
   const freq = document.getElementById('itemFreq').value;
   const day = parseInt(document.getElementById('itemDay').value)||1;
   const editId = document.getElementById('editItemId').value;
+  const isDateBased = freq==='biweekly'||freq==='weekly';
+  const anchorDate = isDateBased ? (toYMD(document.getElementById('itemAnchorDate').value)||'') : '';
   if(!name) { document.getElementById('itemName').focus(); return; }
   if(editId) {
     const item=items.find(i=>i.id==editId);
-    if(item){item.name=name;item.type=sheetSelectedType;item.amount=amount;item.variance=variance;item.freq=freq;item.day=day;}
+    if(item){item.name=name;item.type=sheetSelectedType;item.amount=amount;item.variance=variance;item.freq=freq;item.day=day;item.anchorDate=anchorDate;}
   } else {
-    items.push({id:nextItemId++,name,type:sheetSelectedType,amount,freq,day,variance});
+    items.push({id:nextItemId++,name,type:sheetSelectedType,amount,freq,day,variance,anchorDate});
   }
   closeSheet(); renderAll(); scheduleSave();
 }
