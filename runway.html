@@ -324,8 +324,15 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
         <input class="setting-input" type="number" id="settingBalance" value="0" step="0.01" onchange="onSettingChange()">
       </div>
       <div class="setting-row">
-        <div class="setting-label">As of date<small>Date your starting balance was accurate</small></div>
-        <input class="setting-input" type="date" id="settingStartDate" style="width:150px;font-size:13px" onchange="onSettingChange()">
+        <div class="setting-label">As of date<small>Ledger and balance start from this date — set it in the past to see history</small></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <input class="setting-input" type="date" id="settingStartDate" style="width:150px;font-size:13px" onchange="onSettingChange()">
+          <div style="display:flex;gap:6px">
+            <button style="font-size:11px;padding:3px 8px;border:1px solid var(--gray-200);border-radius:6px;background:none;color:var(--gray-600);cursor:pointer;font-family:inherit" onclick="setStartDateDaysAgo(30)">30d ago</button>
+            <button style="font-size:11px;padding:3px 8px;border:1px solid var(--gray-200);border-radius:6px;background:none;color:var(--gray-600);cursor:pointer;font-family:inherit" onclick="setStartDateDaysAgo(60)">60d ago</button>
+            <button style="font-size:11px;padding:3px 8px;border:1px solid var(--gray-200);border-radius:6px;background:none;color:var(--gray-600);cursor:pointer;font-family:inherit" onclick="setStartDateDaysAgo(90)">90d ago</button>
+          </div>
+        </div>
       </div>
       <div class="setting-row">
         <div class="setting-label">Danger threshold<small>Alert when projected balance falls below</small></div>
@@ -455,7 +462,8 @@ async function loadFromSheet() {
     document.getElementById('syncStatus').style.color='var(--amber)';
   }
   if(!document.getElementById('settingStartDate').value) {
-    document.getElementById('settingStartDate').value = toYMD(new Date());
+    const d = new Date(); d.setDate(d.getDate()-60);
+    document.getElementById('settingStartDate').value = toYMD(d);
   }
   renderAll();
 }
@@ -791,6 +799,11 @@ function setHorizon(h, btn) {
   renderAll(); scheduleSave();
 }
 function onSettingChange(){ renderAll(); scheduleSave(); }
+function setStartDateDaysAgo(days) {
+  const d = new Date(); d.setDate(d.getDate()-days);
+  document.getElementById('settingStartDate').value = toYMD(d);
+  onSettingChange();
+}
 
 // ── Sheet helpers ────────────────────────────────────────────
 let sheetSelectedType = 'debit';
