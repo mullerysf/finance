@@ -197,6 +197,7 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
 .ledger-row.is-actual { border-left-color:var(--blue); }
 .ledger-row.is-projected { border-left-color:var(--gray-200); }
 .ledger-row.is-confirmed { border-left-color:var(--green); }
+.ledger-row.is-posted { border-left-color:var(--gray-300); opacity:0.8; }
 .ledger-left { min-width:0; }
 .ledger-name { font-size:13px; font-weight:500; color:var(--gray-800); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ledger-date { font-size:11px; color:var(--gray-400); margin-top:1px; }
@@ -1107,13 +1108,34 @@ function computeTrueBalance() {
   const startBal = parseFloat(document.getElementById('settingBalance').value)||0;
   const startDate = getStartDate();
   const today = new Date(); today.setHours(0,0,0,0);
-  // Start from startBal, apply every transaction from startDate through today in order
-  let bal = startBal;
+
+  // Start from startBal, apply every transaction AND past recurring item in date order
+  const rows = [];
+
+  // Manual actuals from startDate to today
   transactions
     .map(t=>({...t, dateObj: parseLocalDate(toYMD(t.date))}))
     .filter(t=>!isNaN(t.dateObj) && t.dateObj >= startDate && t.dateObj <= today)
-    .sort((a,b)=>a.dateObj-b.dateObj)
-    .forEach(t=>{ bal += t.type==='credit' ? t.amount : -t.amount; });
+    .forEach(t=>{ rows.push({date:t.dateObj, type:t.type, amount:t.amount}); });
+
+  // Past recurring items from startDate to today
+  items.forEach(item=>{
+    generateDates(item, startDate, today).forEach(d=>{
+      const mkey = fmtMonthKey(d);
+      const dStr = toYMD(d);
+      const skipKey = 'skip_'+item.id+'_'+dStr;
+      if(overrides[skipKey]==='skip') return;
+      const usesDates = item.freq==='biweekly'||item.freq==='weekly';
+      const lookupKey = usesDates ? item.id+'_'+dStr : item.id+'_'+mkey;
+      const overrideAmt = overrides[lookupKey]!==undefined ? overrides[lookupKey] : confirmedAmounts[lookupKey];
+      const amt = overrideAmt!==undefined ? overrideAmt : item.amount;
+      rows.push({date:d, type:item.type, amount:amt});
+    });
+  });
+
+  rows.sort((a,b)=>a.date-b.date);
+  let bal = startBal;
+  rows.forEach(r=>{ bal += r.type==='credit' ? r.amount : -r.amount; });
   return bal;
 }
 function buildLedgerRows() {
@@ -1132,9 +1154,9 @@ function buildLedgerRows() {
         kind:'actual', txId:t.id, itemId:null, dateKey:null, dateStr:t.ymd });
     });
 
-  // Future recurring items (from today forward)
+  // ALL recurring items from startDate through end (past + future)
   items.forEach(item=>{
-    generateDates(item, today, end).forEach(d=>{
+    generateDates(item, startDate, end).forEach(d=>{
       const mkey = fmtMonthKey(d);
       const dStr = toYMD(d);
       const skipKey = 'skip_'+item.id+'_'+dStr;
@@ -1143,13 +1165,16 @@ function buildLedgerRows() {
       const lookupKey = usesDates ? item.id+'_'+dStr : item.id+'_'+mkey;
       const overrideAmt = overrides[lookupKey]!==undefined ? overrides[lookupKey] : confirmedAmounts[lookupKey];
       const amt = overrideAmt!==undefined ? overrideAmt : item.amount;
+      const isPast = d <= today;
+      // Past recurring rows: show as 'posted' (projected but already happened)
+      // Future recurring rows: show as confirmed or projected
+      const kind = overrideAmt!==undefined ? 'confirmed' : isPast ? 'posted' : 'projected';
       rows.push({ date:d, name:item.name, type:item.type, amount:amt,
-        kind: overrideAmt!==undefined?'confirmed':'projected',
-        txId:null, itemId:item.id, dateKey:dStr, mkey, dateStr:dStr });
+        kind, txId:null, itemId:item.id, dateKey:dStr, mkey, dateStr:dStr });
     });
   });
 
-  rows.sort((a,b)=>a.date-b.date);
+  rows.sort((a,b)=>a.date-b.date || (a.kind==='actual'?-1:1));
 
   // Walk forward from startBal — running balance accumulates on every row in date order
   let bal = startBal;
@@ -1160,25 +1185,24 @@ function buildLedgerRows() {
 function renderLedger() {
   const th = parseFloat(document.getElementById('settingThreshold').value)||1000;
   let rows = buildLedgerRows();
-  if(ledgerFilter==='actual') rows=rows.filter(r=>r.kind==='actual');
+  if(ledgerFilter==='actual') rows=rows.filter(r=>r.kind==='actual'||r.kind==='posted');
   else if(ledgerFilter==='projected') rows=rows.filter(r=>r.kind==='projected'||r.kind==='confirmed');
   else if(ledgerFilter==='debits') rows=rows.filter(r=>r.type==='debit');
   else if(ledgerFilter==='credits') rows=rows.filter(r=>r.type==='credit');
 
   if(!rows.length){ document.getElementById('ledgerList').innerHTML='<div class="empty-state">No entries match this filter</div>'; return; }
 
-  // Store rows in a module-level cache so onclick can reference by index — avoids iOS encoding issues
   window._ledgerRows = rows;
 
   let lastMonth='';
   document.getElementById('ledgerList').innerHTML = rows.map((r,i)=>{
     const month=r.date.toLocaleDateString('en-US',{month:'long',year:'numeric'});
     const monthHeader = month!==lastMonth ? (lastMonth=month,`<div class="ledger-month-header">${month}</div>`) : '';
-    const badgeClass=r.kind==='actual'?'actual':r.kind==='confirmed'?'confirmed':'projected';
-    const badgeLabel=r.kind==='actual'?'actual':r.kind==='confirmed'?'locked':'est.';
-    const rowClass=r.kind==='actual'?'is-actual':r.kind==='confirmed'?'is-confirmed':'is-projected';
-    const balClass=r.runningBal<th?'danger':r.runningBal<th*2?'warn':'ok';
-    const sign=r.type==='credit'?'+':'−';
+    const badgeClass = r.kind==='actual'?'actual':r.kind==='confirmed'?'confirmed':r.kind==='posted'?'projected':'projected';
+    const badgeLabel = r.kind==='actual'?'actual':r.kind==='confirmed'?'locked':r.kind==='posted'?'posted':'est.';
+    const rowClass = r.kind==='actual'?'is-actual':r.kind==='confirmed'?'is-confirmed':r.kind==='posted'?'is-posted':'is-projected';
+    const balClass = r.runningBal<th?'danger':r.runningBal<th*2?'warn':'ok';
+    const sign = r.type==='credit'?'+':'−';
     return `${monthHeader}<div class="ledger-row ${rowClass}" style="cursor:pointer" onclick="openLedgerEdit(${i})">
       <div class="ledger-left">
         <div class="ledger-name">${r.name}<span class="ledger-badge ${badgeClass}">${badgeLabel}</span></div>
