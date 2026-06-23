@@ -589,8 +589,7 @@ function buildProjection() {
 
 // ── Render all ───────────────────────────────────────────────
 function renderAll() {
-  const { projectedPoints, today } = buildProjection();
-  const currentBalance = computeTrueBalance();
+  const { projectedPoints, currentBalance, today } = buildProjection();
   const th = parseFloat(document.getElementById('settingThreshold').value)||1000;
   const minBal = Math.min(...projectedPoints.map(p=>p.balance));
   const cls = minBal<th?'danger':minBal<th*2?'warn':'good';
@@ -1108,11 +1107,12 @@ function computeTrueBalance() {
   const startBal = parseFloat(document.getElementById('settingBalance').value)||0;
   const startDate = getStartDate();
   const today = new Date(); today.setHours(0,0,0,0);
-  // Apply all transactions from startDate up to and including today
+  // Start from startBal, apply every transaction from startDate through today in order
   let bal = startBal;
   transactions
     .map(t=>({...t, dateObj: parseLocalDate(toYMD(t.date))}))
     .filter(t=>!isNaN(t.dateObj) && t.dateObj >= startDate && t.dateObj <= today)
+    .sort((a,b)=>a.dateObj-b.dateObj)
     .forEach(t=>{ bal += t.type==='credit' ? t.amount : -t.amount; });
   return bal;
 }
@@ -1123,16 +1123,16 @@ function buildLedgerRows() {
   const end = new Date(today); end.setDate(end.getDate()+horizon);
   const rows = [];
 
-  // All manual transactions — past (actuals) and future
+  // All manual transactions on or after startDate
   transactions
     .map(t=>({...t, ymd:toYMD(t.date), dateObj:parseLocalDate(toYMD(t.date))}))
-    .filter(t=>!isNaN(t.dateObj))
+    .filter(t=>!isNaN(t.dateObj) && t.dateObj >= startDate)
     .forEach(t=>{
       rows.push({ date:t.dateObj, name:t.name, type:t.type, amount:t.amount,
         kind:'actual', txId:t.id, itemId:null, dateKey:null, dateStr:t.ymd });
     });
 
-  // Future recurring items
+  // Future recurring items (from today forward)
   items.forEach(item=>{
     generateDates(item, today, end).forEach(d=>{
       const mkey = fmtMonthKey(d);
@@ -1151,9 +1151,9 @@ function buildLedgerRows() {
 
   rows.sort((a,b)=>a.date-b.date);
 
-  // Walk forward from startBal, computing running balance on every row
+  // Walk forward from startBal — running balance accumulates on every row in date order
   let bal = startBal;
-  rows.forEach(r=>{ bal+=r.type==='credit'?r.amount:-r.amount; r.runningBal=bal; });
+  rows.forEach(r=>{ bal += r.type==='credit' ? r.amount : -r.amount; r.runningBal = bal; });
   return rows;
 }
 
@@ -1288,6 +1288,12 @@ function skipOccurrence(skipKey) {
 }
 
 // ── Init ─────────────────────────────────────────────────────
+// Register service worker for cache control
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+  });
+}
 loadFromSheet();
 </script>
 </body>
