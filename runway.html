@@ -214,6 +214,9 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
 .ledger-balance.ok { color:var(--gray-800); }
 .ledger-col-headers { display:grid; grid-template-columns:1fr auto auto; gap:6px; padding:4px 12px; margin:0 16px 2px; }
 .ledger-col-headers span { font-size:10px; font-weight:600; color:var(--gray-400); text-transform:uppercase; letter-spacing:0.05em; }
+.ledger-today-divider { display:flex; align-items:center; gap:10px; padding:10px 16px; margin:4px 0; }
+.ledger-today-divider::before, .ledger-today-divider::after { content:''; flex:1; height:1.5px; background:var(--blue); }
+.ledger-today-divider span { font-size:11px; font-weight:700; color:var(--blue); letter-spacing:0.08em; text-transform:uppercase; white-space:nowrap; }
 .ledger-col-headers span:nth-child(2) { min-width:72px; text-align:right; }
 .ledger-col-headers span:nth-child(3) { min-width:82px; text-align:right; }
 </style>
@@ -283,7 +286,10 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--gra
 
 <!-- Ledger -->
 <div class="section" id="section-ledger">
-  <div class="section-heading" style="margin-bottom:6px">Full transaction ledger</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px;margin-bottom:6px;margin-top:16px">
+    <span style="font-size:12px;font-weight:600;color:var(--gray-400);letter-spacing:0.07em;text-transform:uppercase">Transaction ledger</span>
+    <button id="historyToggle" onclick="toggleHistory()" style="font-size:12px;font-weight:600;padding:4px 12px;border:1px solid var(--gray-200);border-radius:20px;background:none;color:var(--gray-600);cursor:pointer;font-family:inherit">Show history</button>
+  </div>
   <div class="ledger-filter" id="ledgerFilter">
     <button class="filter-btn active" onclick="setLedgerFilter('all',this)">All</button>
     <button class="filter-btn" onclick="setLedgerFilter('actual',this)">Actuals only</button>
@@ -1078,10 +1084,21 @@ function clearConfirmed(key) {
 
 // ── Ledger ───────────────────────────────────────────────────
 let ledgerFilter = 'all';
+let showHistory = false;
+
 function setLedgerFilter(f, btn) {
   ledgerFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+  renderLedger();
+}
+
+function toggleHistory() {
+  showHistory = !showHistory;
+  const btn = document.getElementById('historyToggle');
+  btn.textContent = showHistory ? 'Hide history' : 'Show history';
+  btn.style.borderColor = showHistory ? 'var(--blue)' : 'var(--gray-200)';
+  btn.style.color = showHistory ? 'var(--blue)' : 'var(--gray-600)';
   renderLedger();
 }
 
@@ -1197,34 +1214,73 @@ function buildLedgerRows() {
 
 function renderLedger() {
   const th = parseFloat(document.getElementById('settingThreshold').value)||1000;
-  let rows = buildLedgerRows();
-  if(ledgerFilter==='actual') rows=rows.filter(r=>r.kind==='actual'||r.kind==='posted');
-  else if(ledgerFilter==='projected') rows=rows.filter(r=>r.kind==='projected'||r.kind==='confirmed');
-  else if(ledgerFilter==='debits') rows=rows.filter(r=>r.type==='debit');
-  else if(ledgerFilter==='credits') rows=rows.filter(r=>r.type==='credit');
+  const today = new Date(); today.setHours(0,0,0,0);
+  let allRows = buildLedgerRows();
 
-  if(!rows.length){ document.getElementById('ledgerList').innerHTML='<div class="empty-state">No entries match this filter</div>'; return; }
+  // Apply type filter
+  if(ledgerFilter==='actual') allRows=allRows.filter(r=>r.kind==='actual'||r.kind==='posted');
+  else if(ledgerFilter==='projected') allRows=allRows.filter(r=>r.kind==='projected'||r.kind==='confirmed');
+  else if(ledgerFilter==='debits') allRows=allRows.filter(r=>r.type==='debit');
+  else if(ledgerFilter==='credits') allRows=allRows.filter(r=>r.type==='credit');
 
-  window._ledgerRows = rows;
+  window._ledgerRows = allRows;
 
-  let lastMonth='';
-  document.getElementById('ledgerList').innerHTML = rows.map((r,i)=>{
-    const month=r.date.toLocaleDateString('en-US',{month:'long',year:'numeric'});
-    const monthHeader = month!==lastMonth ? (lastMonth=month,`<div class="ledger-month-header">${month}</div>`) : '';
-    const badgeClass = r.kind==='actual'?'actual':r.kind==='confirmed'?'confirmed':r.kind==='posted'?'projected':'projected';
-    const badgeLabel = r.kind==='actual'?'actual':r.kind==='confirmed'?'locked':r.kind==='posted'?'posted':'est.';
-    const rowClass = r.kind==='actual'?'is-actual':r.kind==='confirmed'?'is-confirmed':r.kind==='posted'?'is-posted':'is-projected';
-    const balClass = r.runningBal<th?'danger':r.runningBal<th*2?'warn':'ok';
-    const sign = r.type==='credit'?'+':'−';
-    return `${monthHeader}<div class="ledger-row ${rowClass}" style="cursor:pointer" onclick="openLedgerEdit(${i})">
-      <div class="ledger-left">
-        <div class="ledger-name">${r.name}<span class="ledger-badge ${badgeClass}">${badgeLabel}</span></div>
-        <div class="ledger-date">${fmtDateLong(r.date)}</div>
-      </div>
-      <div class="ledger-amount ${r.type}">${sign}${fmtFull(r.amount)}</div>
-      <div class="ledger-balance ${balClass}">${fmtFull(r.runningBal)}</div>
-    </div>`;
-  }).join('');
+  const pastRows = allRows.filter(r=>r.date < today);
+  const todayAndFuture = allRows.filter(r=>r.date >= today);
+  const displayRows = showHistory ? allRows : todayAndFuture;
+
+  if(!allRows.length) {
+    document.getElementById('ledgerList').innerHTML='<div class="empty-state">No entries — check your start date in Settings</div>';
+    return;
+  }
+
+  const html = [];
+  let lastMonth = '';
+  let todayInserted = false;
+
+  if(showHistory) {
+    allRows.forEach((r,i)=>{
+      if(!todayInserted && r.date >= today) {
+        html.push(`<div class="ledger-today-divider"><span>Today · ${fmtDateLong(today)}</span></div>`);
+        lastMonth=''; todayInserted=true;
+      }
+      const month=r.date.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+      if(month!==lastMonth){html.push(`<div class="ledger-month-header">${month}</div>`);lastMonth=month;}
+      html.push(ledgerRowHTML(r,i,th));
+    });
+    if(!todayInserted) html.push(`<div class="ledger-today-divider"><span>Today · ${fmtDateLong(today)}</span></div>`);
+  } else {
+    if(pastRows.length>0) {
+      html.push(`<div style="margin:0 16px 8px;padding:12px 14px;background:var(--gray-100);border-radius:var(--radius-sm);font-size:13px;color:var(--gray-600);text-align:center;cursor:pointer" onclick="toggleHistory()">
+        ↑ ${pastRows.length} past transaction${pastRows.length!==1?'s':''} — tap to show history
+      </div>`);
+    }
+    html.push(`<div class="ledger-today-divider"><span>Today · ${fmtDateLong(today)}</span></div>`);
+    todayAndFuture.forEach((r)=>{
+      const i = allRows.indexOf(r);
+      const month=r.date.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+      if(month!==lastMonth){html.push(`<div class="ledger-month-header">${month}</div>`);lastMonth=month;}
+      html.push(ledgerRowHTML(r,i,th));
+    });
+  }
+
+  document.getElementById('ledgerList').innerHTML = html.join('');
+}
+
+function ledgerRowHTML(r, i, th) {
+  const badgeClass=r.kind==='actual'?'actual':r.kind==='confirmed'?'confirmed':'projected';
+  const badgeLabel=r.kind==='actual'?'actual':r.kind==='confirmed'?'locked':r.kind==='posted'?'posted':'est.';
+  const rowClass=r.kind==='actual'?'is-actual':r.kind==='confirmed'?'is-confirmed':r.kind==='posted'?'is-posted':'is-projected';
+  const balClass=r.runningBal<th?'danger':r.runningBal<th*2?'warn':'ok';
+  const sign=r.type==='credit'?'+':'−';
+  return `<div class="ledger-row ${rowClass}" style="cursor:pointer" onclick="openLedgerEdit(${i})">
+    <div class="ledger-left">
+      <div class="ledger-name">${r.name}<span class="ledger-badge ${badgeClass}">${badgeLabel}</span></div>
+      <div class="ledger-date">${fmtDateLong(r.date)}</div>
+    </div>
+    <div class="ledger-amount ${r.type}">${sign}${fmtFull(r.amount)}</div>
+    <div class="ledger-balance ${balClass}">${fmtFull(r.runningBal)}</div>
+  </div>`;
 }
 
 function openLedgerEdit(idx) {
